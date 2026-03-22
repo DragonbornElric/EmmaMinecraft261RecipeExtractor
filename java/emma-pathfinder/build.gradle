@@ -1,0 +1,96 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+	archivesName = project.archives_base_name
+}
+
+repositories {
+	// Flat directory for pre-built JARs (overflow mod)
+	flatDir {
+		dirs 'libs'
+	}
+	mavenCentral()
+	// Nether pathfinder
+	maven {
+		name = 'babbaj-repo'
+		url = 'https://babbaj.github.io/maven/'
+	}
+}
+
+loom {
+	accessWidenerPath = file("src/main/resources/emma-pathfinder.accesswidener")
+	mods {
+		"emma-bridge" {
+			sourceSet sourceSets.main
+		}
+	}
+}
+
+dependencies {
+	// Minecraft (26.1 is unobfuscated — no mappings needed)
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+	// Fabric API
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+	// MixinExtras
+	include(implementation(annotationProcessor("io.github.llamalad7:mixinextras-fabric:0.3.5")))
+
+	// Java-WebSocket — lightweight WS server for Python<->Minecraft bridge
+	include implementation("org.java-websocket:Java-WebSocket:${project.websocket_version}")
+
+	// Jackson JSON — used by GOAP serialization
+	include implementation('com.fasterxml.jackson.core:jackson-core:2.16.0')
+	include implementation('com.fasterxml.jackson.core:jackson-annotations:2.16.0')
+	include implementation('com.fasterxml.jackson.core:jackson-databind:2.16.0')
+
+	// Nether pathfinder — JNI C++ library for elytra flight pathfinding
+	include implementation('dev.babbaj:nether-pathfinder:1.5')
+
+	// Apache HttpMime — used by SkinChanger
+	include implementation('org.apache.httpcomponents:httpmime:4.5.14')
+
+	// Emma Overflow mod — compile-only (installed separately on server + client)
+	compileOnly files("libs/emma-overflow-0.1.0.jar")
+
+	// JSR-305 annotations (needed by Emmatone)
+	implementation 'com.google.code.findbugs:jsr305:3.0.2'
+
+	// JUnit 4 — tests
+	testImplementation 'junit:junit:4.13.2'
+}
+
+processResources {
+	inputs.property "version", project.version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": inputs.properties.version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+	it.options.encoding = "UTF-8"
+	it.options.compilerArgs += ['-Xlint:none']
+}
+
+java {
+	withSourcesJar()
+
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}
+
+jar {
+	inputs.property "archivesName", project.base.archivesName
+
+	from("LICENSE") {
+		rename { "${it}_${inputs.properties.archivesName}" }
+	}
+}

@@ -1,0 +1,23 @@
+accessWidener v2 official
+
+# --- MixinPlayerController replacement ---
+# MultiPlayerGameMode: mining state fields + item sync method
+accessible field net/minecraft/client/multiplayer/MultiPlayerGameMode isDestroying Z
+mutable    field net/minecraft/client/multiplayer/MultiPlayerGameMode isDestroying Z
+accessible field net/minecraft/client/multiplayer/MultiPlayerGameMode destroyBlockPos Lnet/minecraft/core/BlockPos;
+accessible field net/minecraft/client/multiplayer/MultiPlayerGameMode destroyDelay I
+mutable    field net/minecraft/client/multiplayer/MultiPlayerGameMode destroyDelay I
+accessible method net/minecraft/client/multiplayer/MultiPlayerGameMode ensureHasSentCarriedItem ()V
+
+# --- MixinPalettedContainer + Data replacement ---
+# Direct palette/storage access for fast world scanning
+accessible class net/minecraft/world/level/chunk/PalettedContainer$Data
+accessible field net/minecraft/world/level/chunk/PalettedContainer data Lnet/minecraft/world/level/chunk/PalettedContainer$Data;
+accessible field net/minecraft/world/level/chunk/PalettedContainer$Data palette Lnet/minecraft/world/level/chunk/Palette;
+accessible field net/minecraft/world/level/chunk/PalettedContainer$Data storage Lnet/minecraft/util/BitStorage;
+
+# --- MixinFireworkRocketEntity replacement ---
+# Firework boost entity detection for elytra behavior
+accessible field net/minecraft/world/entity/projectile/FireworkRocketEntity attachedToEntity Lnet/minecraft/world/entity/LivingEntity;
+accessible field net/minecraft/world/entity/projectile/FireworkRocketEntity DATA_ATTACHED_TO_TARGET Lnet/minecraft/network/syncher/EntityDataAccessor;
+accessible method net/minecraft/world/entity/projectile/FireworkRocketEntity isAttachedToEntity ()Z

@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "package": "emmatone.launch.mixins",
+  "compatibilityLevel": "JAVA_25",
+  "verbose": false,
+  "injectors": {
+    "maxShiftBy": 2,
+    "defaultRequire": 1
+  },
+  "client": [
+    "MixinChunkArray",
+    "MixinClientChunkProvider",
+    "MixinClientPlayNetHandler"
+  ],
+  "mixins": [
+  ]
+}

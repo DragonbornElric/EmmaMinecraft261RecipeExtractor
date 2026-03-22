@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+
+# Java / Gradle
+java/emma-pathfinder/build/
+java/emma-pathfinder/.gradle/
+java/emma-overflow/build/
+java/emma-overflow/.gradle/
+java/emma-gameplay-logger/build/
+java/emma-gameplay-logger/.gradle/
+java/dist/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# OS
+.DS_Store
+Thumbs.db
+
+# State files
+smelting_jobs.json

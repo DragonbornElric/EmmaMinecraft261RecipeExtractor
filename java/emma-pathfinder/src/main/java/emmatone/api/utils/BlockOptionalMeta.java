@@ -1,0 +1,160 @@
+/*
+ * This file is part of Emmatone.
+ *
+ * Emmatone is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Emmatone is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with Emmatone.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package emmatone.api.utils;
+
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.Property;
+
+import org.jetbrains.annotations.NotNull;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+public final class BlockOptionalMeta {
+    // id or id[] or id[properties] where id and properties are any text with at least one character
+    private static final Pattern PATTERN = Pattern.compile("^(?<id>.+?)(?:\\[(?<properties>.+?)?\\])?$");
+
+    private final Block block;
+    private final String propertiesDescription; // exists so toString() can return something more useful than a list of all blockstates
+    private final Set<BlockState> blockstates;
+    private final ImmutableSet<Integer> stateHashes;
+    private final ImmutableSet<Integer> stackHashes;
+
+    public BlockOptionalMeta(@NotNull Block block) {
+        this.block = block;
+        this.propertiesDescription = "{}";
+        this.blockstates = getStates(block, Collections.emptyMap());
+        this.stateHashes = getStateHashes(blockstates);
+        this.stackHashes = getStackHashes(blockstates);
+    }
+
+    public BlockOptionalMeta(@NotNull String selector) {
+        Matcher matcher = PATTERN.matcher(selector);
+
+        if (!matcher.find()) {
+            throw new IllegalArgumentException("invalid block selector");
+        }
+
+        block = BlockUtils.stringToBlockRequired(matcher.group("id"));
+
+        String props = matcher.group("properties");
+        Map<Property<?>, ?> properties = props == null || props.equals("") ? Collections.emptyMap() : parseProperties(block, props);
+
+        propertiesDescription = props == null ? "{}" : "{" + props.replace("=", ":") + "}";
+        blockstates = getStates(block, properties);
+        stateHashes = getStateHashes(blockstates);
+        stackHashes = getStackHashes(blockstates);
+    }
+
+    private static <C extends Comparable<C>, P extends Property<C>> P castToIProperty(Object value) {
+        //noinspection unchecked
+        return (P) value;
+    }
+
+    private static Map<Property<?>, ?> parseProperties(Block block, String raw) {
+        ImmutableMap.Builder<Property<?>, Object> builder = ImmutableMap.builder();
+        for (String pair : raw.split(",")) {
+            String[] parts = pair.split("=");
+            if (parts.length != 2) {
+                throw new IllegalArgumentException(String.format("\"%s\" is not a valid property-value pair", pair));
+            }
+            String rawKey = parts[0];
+            String rawValue = parts[1];
+            Property<?> key = block.getStateDefinition().getProperty(rawKey);
+            Comparable<?> value = castToIProperty(key).getValue(rawValue)
+                    .orElseThrow(() -> new IllegalArgumentException(String.format(
+                            "\"%s\" is not a valid value for %s on %s",
+                            rawValue, key, block
+                    )));
+            builder.put(key, value);
+        }
+        return builder.build();
+    }
+
+    private static Set<BlockState> getStates(@NotNull Block block, @NotNull Map<Property<?>, ?> properties) {
+        return block.getStateDefinition().getPossibleStates().stream()
+                .filter(blockstate -> properties.entrySet().stream().allMatch(entry ->
+                        blockstate.getValue(entry.getKey()) == entry.getValue()
+                ))
+                .collect(Collectors.toSet());
+    }
+
+    private static ImmutableSet<Integer> getStateHashes(Set<BlockState> blockstates) {
+        return ImmutableSet.copyOf(
+                blockstates.stream()
+                        .map(BlockState::hashCode)
+                        .toArray(Integer[]::new)
+        );
+    }
+
+    private static ImmutableSet<Integer> getStackHashes(Set<BlockState> blockstates) {
+        return ImmutableSet.copyOf(
+                blockstates.stream()
+                        .map(state -> state.getBlock().asItem())
+                        .filter(item -> item != Items.AIR)
+                        .map(item -> item.hashCode())
+                        .toArray(Integer[]::new)
+        );
+    }
+
+    public Block getBlock() {
+        return block;
+    }
+
+    public boolean matches(@NotNull Block block) {
+        return block == this.block;
+    }
+
+    public boolean matches(@NotNull BlockState blockstate) {
+        Block block = blockstate.getBlock();
+        return block == this.block && stateHashes.contains(blockstate.hashCode());
+    }
+
+    public boolean matches(ItemStack stack) {
+        return stackHashes.contains(stack.getItem().hashCode());
+    }
+
+    @Override
+    public String toString() {
+        return String.format("BlockOptionalMeta{block=%s,properties=%s}", block, propertiesDescription);
+    }
+
+    public BlockState getAnyBlockState() {
+        if (blockstates.size() > 0) {
+            return blockstates.iterator().next();
+        }
+
+        return null;
+    }
+
+    public Set<BlockState> getAllBlockStates() {
+        return blockstates;
+    }
+
+    public Set<Integer> stackHashes() {
+        return stackHashes;
+    }
+
+}

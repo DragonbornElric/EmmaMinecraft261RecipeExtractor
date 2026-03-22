@@ -1,0 +1,185 @@
+package com.emma.bridge.goap.actions;
+
+import emmatone.api.EmmatoneAPI;
+import emmatone.api.pathing.goals.GoalBlock;
+import emmatone.api.process.ICustomGoalProcess;
+import com.emma.bridge.goap.GoapAction;
+import com.emma.bridge.goap.GoalSet;
+import com.emma.bridge.goap.WorldState;
+import com.google.gson.JsonObject;
+import net.minecraft.client.Minecraft;
+
+/**
+ * GOAP Action: Navigate to a target position using Emmatone pathfinding.
+ *
+ * Preconditions: always true (scoring returns 0 if no position targets exist)
+ * Score: goal priority x inverse distance
+ *
+ * Looks for dynamic goals with position targets (x/y/z in target JSON).
+ * Delegates to Emmatone's CustomGoalProcess for pathfinding.
+ * Cancels pathing on deactivation.
+ */
+public class NavigateToAction extends GoapAction {
+
+    /** Don't navigate to positions closer than this (blocks). */
+    private static final float MIN_DISTANCE = 3.0f;
+
+    private boolean navigating = false;
+    private String targetGoalId = null;
+    private int targetX, targetY, targetZ;
+
+    @Override
+    public String getName() {
+        return "NavigateTo";
+    }
+
+    @Override
+    public boolean checkPreconditions(WorldState state) {
+        // Can't access GoalSet from preconditions -- always viable.
+        // If no goals have position targets, computeScore returns 0 and we're never selected.
+        return true;
+    }
+
+    @Override
+    public float computeScore(WorldState state, GoalSet goals) {
+        GoalSet.Goal target = findNavigationTarget(state, goals);
+        if (target == null) return 0;
+
+        double dx = targetX - state.posX;
+        double dy = targetY - state.posY;
+        double dz = targetZ - state.posZ;
+        double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        if (distance < MIN_DISTANCE) return 0;
+
+        // Proximity factor: nearby targets score higher
+        float proximityFactor = 1.0f / (1.0f + (float) distance / 16.0f);
+
+        return target.priority * proximityFactor;
+    }
+
+    @Override
+    public void execute(Minecraft client) {
+        if (targetGoalId == null) return;
+
+        ICustomGoalProcess goalProcess = EmmatoneAPI.getProvider()
+                .getPrimaryEmmatone()
+                .getCustomGoalProcess();
+
+        goalProcess.setGoalAndPath(new GoalBlock(targetX, targetY, targetZ));
+        navigating = true;
+    }
+
+    @Override
+    public void tick(Minecraft client) {
+        if (!navigating) return;
+
+        // Check if Emmatone finished pathing (reached goal or gave up)
+        boolean pathing = EmmatoneAPI.getProvider()
+                .getPrimaryEmmatone()
+                .getPathingBehavior().isPathing();
+
+        if (!pathing && client.player != null) {
+            double dx = client.player.getX() - targetX;
+            double dz = client.player.getZ() - targetZ;
+            double dist = Math.sqrt(dx * dx + dz * dz);
+            if (dist < MIN_DISTANCE) {
+                navigating = false;  // Arrived -- score drops, another action wins
+            }
+        }
+    }
+
+    @Override
+    public void onDeactivated(Minecraft client) {
+        if (navigating) {
+            EmmatoneAPI.getProvider()
+                    .getPrimaryEmmatone()
+                    .getPathingBehavior().cancelEverything();
+            navigating = false;
+        }
+        targetGoalId = null;
+    }
+
+    @Override
+    public boolean isActive() {
+        return navigating;
+    }
+
+    // -- Collateral + personality -----------------------------------------
+
+    @Override
+    public String getPrimaryGoalId() {
+        return targetGoalId;
+    }
+
+    @Override
+    public String personalityCategory() {
+        return "exploration";
+    }
+
+    // -- Debug ------------------------------------------------------------
+
+    @Override
+    public JsonObject getScoreBreakdown(WorldState state, GoalSet goals) {
+        JsonObject bd = super.getScoreBreakdown(state, goals);
+        bd.addProperty("navigating", navigating);
+        bd.addProperty("target_goal", targetGoalId != null ? targetGoalId : "none");
+        if (targetGoalId != null) {
+            bd.addProperty("target_x", targetX);
+            bd.addProperty("target_y", targetY);
+            bd.addProperty("target_z", targetZ);
+        }
+
+        try {
+            var emmatone = EmmatoneAPI.getProvider().getPrimaryEmmatone();
+            bd.addProperty("emmatone_pathing", emmatone.getPathingBehavior().isPathing());
+            var goal = emmatone.getPathingBehavior().getGoal();
+            bd.addProperty("emmatone_goal", goal != null ? goal.toString() : "none");
+        } catch (Exception ignored) {}
+
+        return bd;
+    }
+
+    // -- Target finding ---------------------------------------------------
+
+    /**
+     * Find the best dynamic goal with a position target.
+     * Caches target coordinates for execute().
+     */
+    private GoalSet.Goal findNavigationTarget(WorldState state, GoalSet goals) {
+        GoalSet.Goal bestTarget = null;
+        float bestScore = 0;
+
+        for (GoalSet.Goal goal : goals.getGoals()) {
+            if (goal.isSurvival()) continue;
+            if (goal.target == null) continue;
+            if (!goal.target.has("x") || !goal.target.has("y") || !goal.target.has("z")) continue;
+
+            double tx = goal.target.get("x").getAsDouble();
+            double ty = goal.target.get("y").getAsDouble();
+            double tz = goal.target.get("z").getAsDouble();
+
+            double dx = tx - state.posX;
+            double dy = ty - state.posY;
+            double dz = tz - state.posZ;
+            double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+            if (distance < MIN_DISTANCE) continue;
+
+            float score = goal.priority / (1.0f + (float) distance / 16.0f);
+            if (score > bestScore) {
+                bestScore = score;
+                bestTarget = goal;
+            }
+        }
+
+        if (bestTarget != null) {
+            targetGoalId = bestTarget.id;
+            targetX = bestTarget.target.get("x").getAsInt();
+            targetY = bestTarget.target.get("y").getAsInt();
+            targetZ = bestTarget.target.get("z").getAsInt();
+        }
+
+        return bestTarget;
+    }
+}

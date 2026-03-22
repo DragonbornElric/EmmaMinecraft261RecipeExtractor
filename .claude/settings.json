@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:forums.minecraftforge.net)",
+      "WebFetch(domain:en.wikipedia.org)",
+      "WebFetch(domain:ccrg.cs.memphis.edu)",
+      "WebFetch(domain:indiaai.gov.in)",
+      "WebFetch(domain:cdn.aaai.org)",
+      "WebFetch(domain:journals.plos.org)",
+      "WebFetch(domain:bernardbaars.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:www.piwheels.org)",
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:meta.fabricmc.net)",
+      "WebFetch(domain:maven.fabricmc.net)",
+      "WebFetch(domain:fabricmc.net)",
+      "WebFetch(domain:docs.fabricmc.net)",
+      "Read(//c/Users/Owner/.claude/projects/c--Users-Owner-EmmaMinecraft261/073e7432-248a-4eb9-b030-f1536f9421de/tool-results/**)",
+      "WebFetch(domain:deepwiki.com)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Read(//c/Users/Owner/AppData/Local/Temp/**)"
+    ]
+  }
+}
