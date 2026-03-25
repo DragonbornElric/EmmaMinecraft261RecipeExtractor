@@ -85,7 +85,7 @@ public class PickupItemAction extends GoapAction {
                 if (!droppedId.equals(goalItem)) continue;
 
                 int goalCount = goal.target.has("count") ? goal.target.get("count").getAsInt() : 1;
-                if (state.hasItem(goalItem, goalCount)) continue;
+                if (state.isGoalItemSatisfied(goalItem, goalCount)) continue;
 
                 float distance = player.distanceTo(itemEntity);
                 float proximityFactor = 1.0f / (1.0f + distance / 10.0f);

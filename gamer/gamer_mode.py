@@ -67,21 +67,18 @@ class GamerMode:
     # ── Public API ────────────────────────────────────────────────
 
     def activate(self) -> dict:
-        """Set kill_dragon goal and configure personality for progression."""
-        goals = self._build_all_goals()
-        result = self.client.set_goap_goals(goals, enabled=True)
-        self.client.set_personality(PERSONALITY_OVERWORLD)
+        """Activate gamer mode — Java sets kill_dragon goal + personality."""
+        result = self.client.set_mode("gamer")
         self.active = True
         self.activated_at = time.time()
         self.last_refresh = time.time()
-        self._goals_sent = len(goals)
-        log.info("GamerMode activated: %d goals sent", len(goals))
+        self._goals_sent = result.get("goal_count", 0)
+        log.info("GamerMode activated via set_mode('gamer')")
         return result
 
     def deactivate(self) -> dict:
-        """Clear all gamer goals and cancel active process."""
-        self.client.cancel()
-        result = self.client.set_goap_goals([])
+        """Clear all gamer goals by switching to idle mode."""
+        result = self.client.set_mode("idle")
         self.active = False
         log.info("GamerMode deactivated")
         return result

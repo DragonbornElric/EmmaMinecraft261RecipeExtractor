@@ -1,5 +1,8 @@
 package com.emma.bridge.goap;
 
+import com.emma.bridge.EmmaBridgeMod;
+import com.emma.bridge.catalogue.ItemRecipeEntry;
+import com.emma.bridge.catalogue.ItemRecipeRegistry;
 import com.emma.bridge.util.InventoryScanner;
 import com.emma.bridge.util.ItemClassifier;
 import com.google.gson.JsonObject;
@@ -34,9 +37,9 @@ import java.util.Map;
  * Updated by polling (not events) — called once per tick by GoapTicker.
  *
  * Three-scope inventory:
- *   playerInventory  — items in player hotbar + main inv
- *   overflowInventory — items in overflow chest (Phase 58c)
- *   knownStorage     — items in tracked containers (Phase 58c DB)
+ *   playerInventory   — items in player hotbar + main inv (36 slots)
+ *   endinvInventory   — items in Endless Inventory (unlimited, synced via CachedSrcInv)
+ *   knownStorage      — items in tracked containers (Phase 58c DB)
  *
  * Equipped armor per slot with enchantments + durability for ArmorScorer.
  * Available armor in inventory for upgrade decisions.
@@ -69,7 +72,7 @@ public class WorldState {
 
     // ── Inventory — three scopes ─────────────────────────────────
     public final Map<String, Integer> playerInventory = new HashMap<>();
-    public final Map<String, Integer> overflowInventory = new HashMap<>();
+    public final Map<String, Integer> endinvInventory = new HashMap<>();
     public final Map<String, Integer> knownStorage = new HashMap<>();
     public int freeSlots;
 
@@ -129,6 +132,15 @@ public class WorldState {
     public boolean strongholdKnown;
     public int strongholdX, strongholdZ;
 
+    // ── Base location (populated from BaseRegistry by GoapTicker) ──
+    public boolean hasBase;
+    public int baseX, baseY, baseZ;
+    public String baseName;
+
+    // ── Village indicators (populated by GoapTicker scanner when !hasBase) ──
+    public boolean villageIndicatorsNearby;
+    public final Map<String, List<BlockPos>> villageBlocks = new HashMap<>();
+
     // ── End dimension state (populated when in the_end) ────────
     public boolean dragonAlive;
     public int endCrystalCount;
@@ -174,7 +186,10 @@ public class WorldState {
         // Player inventory (hotbar + main)
         updatePlayerInventory(player);
 
-        // overflowInventory + knownStorage: populated externally via setters
+        // Endless Inventory (synced client cache)
+        updateEndinvInventory();
+
+        // knownStorage: populated externally via setter
         // (wired from Phase 58c StorageHandler when available)
 
         // nearbyBlocks: populated externally via setNearbyBlocks
@@ -201,9 +216,12 @@ public class WorldState {
             if (offId.equals("minecraft:shield")) hasShield = true;
         }
 
-        // Food count
+        // Food count (player inventory + endinv)
         foodItemCount = 0;
         for (var entry : playerInventory.entrySet()) {
+            if (isFood(entry.getKey())) foodItemCount += entry.getValue();
+        }
+        for (var entry : endinvInventory.entrySet()) {
             if (isFood(entry.getKey())) foodItemCount += entry.getValue();
         }
 
@@ -244,6 +262,42 @@ public class WorldState {
         // Scan player inventory for armor candidates (upgrade opportunities)
         for (var ss : InventoryScanner.findAll(player.getInventory(), WorldState::isArmorItem)) {
             availableArmor.add(ArmorCandidate.fromStack(ss.stack(), ss.slot()));
+        }
+
+        // Scan endinv for armor candidates (slot=-1 means "needs extraction")
+        for (var entry : endinvInventory.entrySet()) {
+            String id = entry.getKey();
+            if (isArmorItemId(id)) {
+                EquipmentSlot eqSlot = ItemClassifier.getArmorSlot(id);
+                if (eqSlot != null) {
+                    // Base stats only — no enchantment/durability data from endinv
+                    availableArmor.add(new ArmorCandidate(
+                            id, eqSlot, java.util.Collections.emptyMap(),
+                            1.0f, false, -1));
+                }
+            }
+        }
+    }
+
+    private static boolean isArmorItemId(String id) {
+        return id.contains("helmet") || id.contains("chestplate")
+                || id.contains("leggings") || id.contains("boots");
+    }
+
+    private int endinvLogCooldown = 0;
+    private void updateEndinvInventory() {
+        endinvInventory.clear();
+        endinvInventory.putAll(com.emma.bridge.util.EndinvBridge.getAllItems());
+        // Log endinv contents periodically (every 200 ticks = ~10s)
+        if (++endinvLogCooldown >= 200) {
+            endinvLogCooldown = 0;
+            if (endinvInventory.isEmpty()) {
+                EmmaBridgeMod.LOGGER.info("[WorldState] endinvInventory is EMPTY (available={})",
+                        com.emma.bridge.util.EndinvBridge.isAvailable());
+            } else {
+                EmmaBridgeMod.LOGGER.info("[WorldState] endinvInventory: {} items — {}",
+                        endinvInventory.size(), endinvInventory);
+            }
         }
     }
 
@@ -360,12 +414,6 @@ public class WorldState {
 
     // ── External data setters (wired from StorageHandler / BlockScanner) ──
 
-    /** Set overflow inventory counts (from Phase 58c overflow chest). */
-    public void setOverflowInventory(Map<String, Integer> counts) {
-        overflowInventory.clear();
-        overflowInventory.putAll(counts);
-    }
-
     /** Set known storage counts (from Phase 58c container DB). */
     public void setKnownStorage(Map<String, Integer> counts) {
         knownStorage.clear();
@@ -376,6 +424,13 @@ public class WorldState {
     public void setNearbyBlocks(Map<String, List<BlockPos>> blocks) {
         nearbyBlocks.clear();
         nearbyBlocks.putAll(blocks);
+    }
+
+    /** Set village indicator blocks (from BlockScanner when !hasBase in overworld). */
+    public void setVillageBlocks(Map<String, List<BlockPos>> blocks) {
+        villageBlocks.clear();
+        villageBlocks.putAll(blocks);
+        villageIndicatorsNearby = !blocks.isEmpty();
     }
 
     // ── Convenience methods ──────────────────────────────────────
@@ -399,7 +454,7 @@ public class WorldState {
      */
     public int totalItemCount(String itemId) {
         return playerInventory.getOrDefault(itemId, 0)
-                + overflowInventory.getOrDefault(itemId, 0)
+                + endinvInventory.getOrDefault(itemId, 0)
                 + knownStorage.getOrDefault(itemId, 0);
     }
 
@@ -440,6 +495,79 @@ public class WorldState {
     public int getEffectAmplifier(String effectId) {
         StatusEffectData data = activeEffects.get(effectId);
         return data != null ? data.amplifier : -1;
+    }
+
+    /**
+     * Check if a goal item requirement is satisfied — the player has the exact item
+     * in personal inventory, OR has an equal/better tier item equipped/in inventory.
+     *
+     * Handles:
+     *   - Shield: checks hasShield flag
+     *   - Armor: checks equipped slot for equal/better material tier
+     *   - Tools/weapons: scans playerInventory for same tool type with equal/better tier
+     *   - Food/misc: exact item + count check in playerInventory only
+     */
+    /**
+     * Count how many of an item are obtainable: actual count + smeltable precursors.
+     * Counts 1:1 smelt conversions (ore → ingot) so that having iron_ore counts
+     * toward an iron_ingot goal. Skips recycling recipes (smelt iron_helmet → nugget).
+     */
+    public int countObtainable(String itemId) {
+        int count = totalItemCount(itemId);
+
+        String bareId = ItemClassifier.stripNamespace(itemId);
+        List<ItemRecipeEntry> entries = ItemRecipeRegistry.getEntries(bareId);
+        for (ItemRecipeEntry entry : entries) {
+            if (!entry.getObtainMethod().isSmeltType()) continue;
+            String[] smeltFrom = entry.getSmeltFrom();
+            if (smeltFrom == null) continue;
+            for (String input : smeltFrom) {
+                if (ItemRecipeRegistry.hasItemProperties(input)) continue;
+                String fullInput = input.contains(":") ? input : "minecraft:" + input;
+                count += totalItemCount(fullInput);
+            }
+        }
+
+        return count;
+    }
+
+    public boolean isGoalItemSatisfied(String itemId, int count) {
+        // Check across all scopes including smeltable precursors
+        if (countObtainable(itemId) >= count) return true;
+
+        String bareId = ItemClassifier.stripNamespace(itemId);
+
+        // Shield
+        if (bareId.equals("shield")) return hasShield;
+
+        // Armor: check equipped slot for equal/better tier
+        EquipmentSlot slot = ItemClassifier.getArmorSlot(bareId);
+        if (slot != null) {
+            ArmorState equipped = equippedArmor.get(slot);
+            if (equipped == null) return false;
+            return ItemClassifier.getMaterialTier(equipped.item)
+                    >= ItemClassifier.getMaterialTier(itemId);
+        }
+
+        // Tool/weapon: any same-type tool with equal/better tier in inventory or endinv
+        String toolType = ItemClassifier.getToolCategory(bareId);
+        if (toolType != null) {
+            int goalTier = ItemClassifier.getMaterialTier(itemId);
+            java.util.Map<String, Integer> allItems = new java.util.HashMap<>(playerInventory);
+            allItems.putAll(endinvInventory);
+            for (var entry : allItems.entrySet()) {
+                if (entry.getValue() <= 0) continue;
+                String invBare = ItemClassifier.stripNamespace(entry.getKey());
+                if (toolType.equals(ItemClassifier.getToolCategory(invBare))
+                        && ItemClassifier.getMaterialTier(entry.getKey()) >= goalTier) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Default (food, misc): exact item count check only
+        return false;
     }
 
     private static boolean isFood(String itemId) {
@@ -495,6 +623,17 @@ public class WorldState {
         j.addProperty("available_armor", availableArmor.size());
         j.addProperty("nearby_block_types", nearbyBlocks.size());
         j.addProperty("active_effects", activeEffects.size());
+        j.addProperty("has_base", hasBase);
+        if (hasBase) {
+            j.addProperty("base_name", baseName);
+            j.addProperty("base_x", baseX);
+            j.addProperty("base_y", baseY);
+            j.addProperty("base_z", baseZ);
+        }
+        j.addProperty("village_indicators_nearby", villageIndicatorsNearby);
+        if (villageIndicatorsNearby) {
+            j.addProperty("village_block_types", villageBlocks.size());
+        }
         j.addProperty("tick", tick);
         return j;
     }
@@ -533,6 +672,15 @@ public class WorldState {
         copy.strongholdKnown = strongholdKnown;
         copy.strongholdX = strongholdX;
         copy.strongholdZ = strongholdZ;
+        copy.hasBase = hasBase;
+        copy.baseX = baseX;
+        copy.baseY = baseY;
+        copy.baseZ = baseZ;
+        copy.baseName = baseName;
+        copy.villageIndicatorsNearby = villageIndicatorsNearby;
+        for (var entry : villageBlocks.entrySet()) {
+            copy.villageBlocks.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+        }
         copy.dragonAlive = dragonAlive;
         copy.endCrystalCount = endCrystalCount;
         copy.dragonHealth = dragonHealth;
@@ -545,7 +693,7 @@ public class WorldState {
         copy.incomingProjectiles.addAll(incomingProjectiles);
         copy.activeEffects.putAll(activeEffects);
         copy.playerInventory.putAll(playerInventory);
-        copy.overflowInventory.putAll(overflowInventory);
+        copy.endinvInventory.putAll(endinvInventory);
         copy.knownStorage.putAll(knownStorage);
         copy.equippedArmor.putAll(equippedArmor);
         copy.availableArmor.addAll(availableArmor);

@@ -1,0 +1,198 @@
+{
+  "total_worlds": 61,
+  "total_exports": 94,
+  "files": [
+    "1.13.1_tnt_duping.litematic",
+    "1.17_Auto_Farms10_build_0.litematic",
+    "1.17_Auto_Farms10_build_1.litematic",
+    "1.17_Auto_Farms10_build_2.litematic",
+    "1.17_Auto_Farms10_build_3.litematic",
+    "1.17_Auto_Farms10_build_4.litematic",
+    "1.17_Auto_Farms10_build_5.litematic",
+    "1.17_Auto_Farms10_build_6.litematic",
+    "1.17_Auto_Farms10_build_7.litematic",
+    "1.17_Auto_Farms10_build_8.litematic",
+    "1.17_Auto_Farms10_build_9.litematic",
+    "1_19_farms_and_machines_WDL2.litematic",
+    "1_19_farms_and_machines_WDL2_2.litematic",
+    "1_19_farms_and_machines_WDL2_3.litematic",
+    "1_19_farms_and_machines_WDL2_4.litematic",
+    "1_20_farms_and_machines_WDL6.litematic",
+    "40_auto_farms_WDL_build_0.litematic",
+    "40_auto_farms_WDL_build_1.litematic",
+    "40_auto_farms_WDL_build_2.litematic",
+    "40_auto_farms_WDL_build_3.litematic",
+    "40_auto_farms_WDL_build_4.litematic",
+    "40_auto_farms_WDL_build_5.litematic",
+    "40_auto_farms_WDL_build_6.litematic",
+    "40_auto_farms_WDL_build_7.litematic",
+    "40_auto_farms_WDL_2_build_0.litematic",
+    "40_auto_farms_WDL_2_build_1.litematic",
+    "40_auto_farms_WDL_2_build_2.litematic",
+    "40_auto_farms_WDL_2_build_3.litematic",
+    "40_auto_farms_WDL_2_build_4.litematic",
+    "40_auto_farms_WDL_2_build_5.litematic",
+    "40_auto_farms_WDL_2_build_6.litematic",
+    "40_auto_farms_WDL_2_build_7.litematic",
+    "ALL_flower_and_dye_farms_build_0.litematic",
+    "ALL_flower_and_dye_farms_build_1.litematic",
+    "ALL_flower_and_dye_farms_build_2.litematic",
+    "ALL_flower_and_dye_farms_build_3.litematic",
+    "ALL_flower_and_dye_farms_build_4.litematic",
+    "ALL_flower_and_dye_farms_build_5.litematic",
+    "ALL_flower_and_dye_farms_build_6.litematic",
+    "ALL_flower_and_dye_farms_build_7.litematic",
+    "ALL_flower_and_dye_farms_build_8.litematic",
+    "ALL_flower_and_dye_farms_build_9.litematic",
+    "ALL_flower_and_dye_farms_build_10.litematic",
+    "ALL_flower_and_dye_farms_build_11.litematic",
+    "ALL_sizes_of_blocks_and_entities_1.21.5_build_1.litematic",
+    "ALL_sizes_of_blocks_and_entities_1.21.5_build_2.litematic",
+    "All_in_1_Villager_Farm_WDL_build_0.litematic",
+    "All_in_1_Villager_Farm_WDL_build_1.litematic",
+    "All_in_1_Villager_Farm_WDL_build_2.litematic",
+    "Armor_Trim_ALL_wdl.litematic",
+    "Shulker_Farm_v4_WDL_build_0.litematic",
+    "Shulker_Farm_v4_WDL_build_1.litematic",
+    "Shulker_Farm_v4_WDL_build_2.litematic",
+    "Shulker_Farm_v4_WDL_build_3.litematic",
+    "Shulker_Farm_v4_WDL_build_4.litematic",
+    "Shulker_Farm_v4_WDL_build_5.litematic",
+    "Tropical_Fish.litematic",
+    "allay_auto_breeder.litematic",
+    "allay_auto_breeder_2.litematic",
+    "auto_kelp_farm_build_0.litematic",
+    "auto_kelp_farm_build_1.litematic",
+    "auto_kelp_farm_build_2.litematic",
+    "auto_kelp_farm_build_3.litematic",
+    "auto_kelp_farm_build_4.litematic",
+    "auto_kelp_farm_build_5.litematic",
+    "auto_kelp_farm_build_6.litematic",
+    "auto_kelp_farm_build_7.litematic",
+    "auto_kelp_farm_build_8.litematic",
+    "auto_kelp_farm_build_9.litematic",
+    "bamboo_small_farms_WDL.litematic",
+    "fern_farm_and_1_19_farms_and_machines_WDL4.litematic",
+    "grass_farm.litematic",
+    "jukebox_disc_sorter_and_clock.litematic",
+    "moss_bonemeal_fuel_farm_wdl_updated_build_0.litematic",
+    "moss_bonemeal_fuel_farm_wdl_updated_build_1.litematic",
+    "moss_bonemeal_fuel_farm_wdl_updated_build_2.litematic",
+    "moss_bonemeal_fuel_farm_wdl_updated_build_3.litematic",
+    "moss_bonemeal_fuel_farm_wdl_updated_build_4.litematic",
+    "moss_bonemeal_fuel_farm_wdl_updated_build_5.litematic",
+    "moss_bonemeal_fuel_farm_wdl_updated_build_6.litematic",
+    "moss_bonemeal_fuel_farm_wdl_updated_build_7.litematic",
+    "moss_bonemeal_fuel_farm_wdl_updated_build_8.litematic",
+    "moss_bonemeal_fuel_farm_wdl_updated_build_9.litematic",
+    "moss_bonemeal_fuel_farm_wdl_updated_build_10.litematic",
+    "moss_bonemeal_fuel_farm_wdl_updated_build_11.litematic",
+    "simple_Piglin_Farm_wdl.litematic",
+    "sugar_cane_melon_pumpkin_5_types_of_farms.litematic",
+    "wandering_trader_farm_build_0.litematic",
+    "wandering_trader_farm_build_1.litematic",
+    "wandering_trader_farm_build_2.litematic",
+    "wandering_trader_farm_build_3.litematic",
+    "wandering_trader_farm_build_4.litematic",
+    "wandering_trader_farm_build_5.litematic",
+    "wandering_trader_farm_build_6.litematic"
+  ],
+  "errors": [
+    {
+      "world": "All_1.16_Auto_Farms_WDL.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "All_1.16_Auto_Farms_WDL_2.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "All_1.16_Auto_Farms_WDL_3.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "All_1.16_Auto_Farms_WDL_4.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "All_1.16_Auto_Farms_WDL_5.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "All_1.16_Auto_Farms_WDL_6.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "All_1.16_Auto_Farms_WDL_wood_farm.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "Rarest_Strider_WDL.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "Simple_Auto_Berry_Farm_WDL.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "Simple_Drag_Egg_Gen_WDL.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "Simple_Sand_Gen_WDL.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "Stasis_Chambers_WDL.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "Suspicious_stew_factory_WDL.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "afk_ancient_debris_farm_WDL.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "afk_wart_farm_wdl.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "auto_mushroom_block_farm_WDL.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "bee_nest_farm_wdl.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "best_bee_farms.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "infinite_trading.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "med_and_big_bamboo_farm_wdl.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "sea_pickle_farm.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "seagrass_farm_eff_WDL.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "turtle_farm2_wdl.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    },
+    {
+      "world": "wither_powered_mushroom_farm_WDL.zip",
+      "error": "'OldBlock' object has no attribute 'properties'"
+    }
+  ]
+}

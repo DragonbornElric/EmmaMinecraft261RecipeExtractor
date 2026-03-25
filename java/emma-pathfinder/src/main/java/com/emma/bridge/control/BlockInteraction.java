@@ -427,7 +427,13 @@ public final class BlockInteraction {
             }
         }
 
-        return false; // item not in inventory
+        // Fallback: try extracting from Endless Inventory
+        if (com.emma.bridge.util.EndinvBridge.extractToSlot(item,
+                player.getInventory().getSelectedSlot())) {
+            return true;
+        }
+
+        return false; // item not found anywhere
     }
 
     // ── Internal ─────────────────────────────────────────────

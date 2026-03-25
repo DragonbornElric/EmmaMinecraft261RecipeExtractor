@@ -138,6 +138,14 @@ class BuildDB:
         conn.close()
         return row is not None
 
+    def guide_exists_by_source(self, source: str) -> bool:
+        """Check if a guide with the same source filename already exists (fast, no parse needed)."""
+        conn = self._conn()
+        row = conn.execute(
+            "SELECT id FROM build_guides WHERE source=?", (source,)).fetchone()
+        conn.close()
+        return row is not None
+
     # ── Substitutions ─────────────────────────────────────────
 
     def add_substitution(self, original: str, substitute: str,

@@ -204,31 +204,48 @@ public final class CombatHelper {
      */
     public static boolean equipBestWeapon(LocalPlayer player) {
         int bestSlot = getBestWeapon(player);
-        if (bestSlot < 0) return false;
+        if (bestSlot >= 0) {
+            // If already in hotbar, just select it
+            if (bestSlot < 9) {
+                player.getInventory().setSelectedSlot(bestSlot);
+                return true;
+            }
 
-        // If already in hotbar, just select it
-        if (bestSlot < 9) {
-            player.getInventory().setSelectedSlot(bestSlot);
-            return true;
-        }
-
-        // If in main inventory (9-35), swap with current hotbar slot
-        if (bestSlot < 36) {
-            int currentSlot = player.getInventory().getSelectedSlot();
-            net.minecraft.client.Minecraft client = net.minecraft.client.Minecraft.getInstance();
-            int syncId = player.inventoryMenu.containerId;
-            // Pick up weapon from inventory
-            client.gameMode.handleContainerInput(syncId, bestSlot, 0,
-                    net.minecraft.world.inventory.ContainerInput.PICKUP, player);
-            // Place in current hotbar slot (slots 36-44 in screen handler map to hotbar 0-8)
-            client.gameMode.handleContainerInput(syncId, 36 + currentSlot, 0,
-                    net.minecraft.world.inventory.ContainerInput.PICKUP, player);
-            // If there was something in the hotbar slot, put it back
-            if (!player.inventoryMenu.getCarried().isEmpty()) {
+            // If in main inventory (9-35), swap with current hotbar slot
+            if (bestSlot < 36) {
+                int currentSlot = player.getInventory().getSelectedSlot();
+                net.minecraft.client.Minecraft client = net.minecraft.client.Minecraft.getInstance();
+                int syncId = player.inventoryMenu.containerId;
                 client.gameMode.handleContainerInput(syncId, bestSlot, 0,
                         net.minecraft.world.inventory.ContainerInput.PICKUP, player);
+                client.gameMode.handleContainerInput(syncId, 36 + currentSlot, 0,
+                        net.minecraft.world.inventory.ContainerInput.PICKUP, player);
+                if (!player.inventoryMenu.getCarried().isEmpty()) {
+                    client.gameMode.handleContainerInput(syncId, bestSlot, 0,
+                            net.minecraft.world.inventory.ContainerInput.PICKUP, player);
+                }
+                return true;
             }
-            return true;
+        }
+
+        // Fallback: extract best weapon from Endless Inventory
+        if (EndinvBridge.isAvailable()) {
+            String bestWeaponId = null;
+            double bestDamage = 0;
+            for (var entry : EndinvBridge.getAllItems().entrySet()) {
+                String id = entry.getKey();
+                if (id.contains("sword") || id.contains("axe") || id.contains("mace") || id.contains("trident")) {
+                    double dmg = ItemClassifier.getMaterialTier(id);
+                    if (dmg > bestDamage) {
+                        bestDamage = dmg;
+                        bestWeaponId = id;
+                    }
+                }
+            }
+            if (bestWeaponId != null) {
+                return EndinvBridge.extractToSlot(bestWeaponId,
+                        player.getInventory().getSelectedSlot());
+            }
         }
 
         return false;

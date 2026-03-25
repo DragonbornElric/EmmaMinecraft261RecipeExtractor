@@ -78,7 +78,6 @@ public class StoreItemsAction extends GoapAction {
 
     @Override
     public boolean checkPreconditions(WorldState state) {
-        // Stay eligible while actively depositing so we finish the job
         return StorageRequest.hasPending() || state.freeSlots <= FREE_SLOT_THRESHOLD || active;
     }
 
@@ -225,7 +224,7 @@ public class StoreItemsAction extends GoapAction {
     // ── Phase: NAVIGATE ──────────────────────────────────────────
 
     private void tickNavigate(Minecraft client, LocalPlayer player) {
-        switch (GoapNavHelper.tickNavigateToBlock(player, containerPos, ++waitTicks, NAV_TIMEOUT_TICKS, 4.5)) {
+        switch (GoapNavHelper.tickNavigateToBlock(player, containerPos, ++waitTicks, NAV_TIMEOUT_TICKS, GoapNavHelper.CONTAINER_ARRIVAL_DIST)) {
             case NO_TARGET -> phase = Phase.FIND_CONTAINER;
             case ARRIVED -> { phase = Phase.OPEN; waitTicks = 0; }
             case TIMEOUT -> {

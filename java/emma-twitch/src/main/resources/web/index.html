@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Emma Twitch Control Panel</title>
+	<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+	<header>
+		<h1>Emma Twitch Control Panel</h1>
+		<div id="status-bar">
+			<span id="twitch-status" class="status-badge disconnected">Disconnected</span>
+			<span id="effect-count">0 effects</span>
+		</div>
+	</header>
+
+	<nav>
+		<button class="tab active" data-tab="effects">Effects</button>
+		<button class="tab" data-tab="rewards">Twitch Rewards</button>
+		<button class="tab" data-tab="bits">Bit Tiers</button>
+		<button class="tab" data-tab="settings">Settings</button>
+	</nav>
+
+	<main>
+		<!-- Effects Tab -->
+		<section id="tab-effects" class="tab-content active">
+			<div class="toolbar">
+				<input type="text" id="effect-search" placeholder="Search effects...">
+				<label><input type="checkbox" id="show-enabled-only"> Enabled only</label>
+			</div>
+			<table id="effects-table">
+				<thead>
+					<tr>
+						<th>Effect ID</th>
+						<th>Enabled</th>
+						<th>Cooldown (s)</th>
+						<th>Actions</th>
+					</tr>
+				</thead>
+				<tbody id="effects-body"></tbody>
+			</table>
+		</section>
+
+		<!-- Twitch Rewards Tab -->
+		<section id="tab-rewards" class="tab-content">
+			<h2>Channel Point Rewards</h2>
+			<p>Your existing Twitch custom rewards. Map each to an in-game effect.</p>
+			<div id="rewards-loading" style="color:#888">Loading rewards from Twitch...</div>
+			<table id="rewards-table" style="display:none">
+				<thead>
+					<tr>
+						<th>Reward Title</th>
+						<th>Cost</th>
+						<th>Mapped Effect</th>
+						<th>Actions</th>
+					</tr>
+				</thead>
+				<tbody id="rewards-body"></tbody>
+			</table>
+			<div id="rewards-error" style="display:none; color:#e4b7b7; margin-top:12px"></div>
+			<div style="margin-top:16px">
+				<h3 style="color:#9146ff; margin-bottom:8px">Manual Mappings</h3>
+				<p>Add mappings by reward ID for rewards not shown above.</p>
+				<div id="mappings-list"></div>
+				<button id="add-mapping" class="btn" style="margin-top:8px">+ Add Manual Mapping</button>
+				<button class="btn" onclick="saveMappings()" style="margin-top:8px; margin-left:8px">Save All Mappings</button>
+			</div>
+		</section>
+
+		<!-- Bit Tiers Tab -->
+		<section id="tab-bits" class="tab-content">
+			<h2>Bit Cheer Tiers</h2>
+			<p>When a viewer cheers bits, the highest matching tier triggers its effect. For example, if you set 100 bits = "zombie" and 500 bits = "explode", a 200-bit cheer triggers "zombie" and a 600-bit cheer triggers "explode".</p>
+			<div id="bit-tiers-list"></div>
+			<button id="add-bit-tier" class="btn">+ Add Tier</button>
+			<button class="btn" onclick="saveMappings()" style="margin-left:8px">Save Tiers</button>
+		</section>
+
+		<!-- Settings Tab -->
+		<section id="tab-settings" class="tab-content">
+			<h2>Settings</h2>
+			<div class="setting-row">
+				<label>Global Cooldown (seconds):</label>
+				<input type="number" id="global-cooldown" min="0" value="30">
+				<button class="btn" onclick="saveSettings()">Save</button>
+			</div>
+			<div class="setting-row">
+				<label>Twitch Connection:</label>
+				<span id="twitch-channel">Not configured</span>
+				<button class="btn" id="twitch-connect-btn" onclick="connectTwitch()">Connect to Twitch</button>
+			</div>
+			<div class="setting-row">
+				<label>Required Scopes:</label>
+				<span style="color:#888; font-size:0.85em">channel:read:redemptions, channel:manage:redemptions, bits:read</span>
+			</div>
+			<div style="margin-top:24px; padding:16px; background:#16213e; border-radius:8px">
+				<h3 style="color:#9146ff; margin-bottom:8px">How Viewers See Rewards</h3>
+				<p style="color:#ccc; line-height:1.6">
+					Channel Point rewards appear in the <strong>reward menu</strong> (gift icon below the chat input).
+					Viewers click a reward, it deducts their points, and triggers the mapped effect in-game.
+					You create rewards in your <a href="https://dashboard.twitch.tv/viewer-rewards/channel-points/rewards" target="_blank" style="color:#9146ff">Twitch Creator Dashboard</a>
+					under Viewer Rewards &rarr; Channel Points &rarr; Custom Rewards.
+					<br><br>
+					Bits cheers work differently — viewers type <code>cheer100</code> (or use Bit emotes) in chat.
+					The mod matches the bit amount against your configured tiers.
+				</p>
+			</div>
+		</section>
+	</main>
+
+	<script src="/app.js"></script>
+</body>
+</html>

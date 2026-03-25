@@ -27,7 +27,7 @@ import java.util.Map;
  * Handles storage-related bridge commands.
  *
  * Scan detects container blocks and enriches results with ContainerTracker cache.
- * Total counts items across inventory + overflow + cached containers.
+ * Total counts items across inventory + cached containers.
  * Deposit/withdraw queue StorageRequests for the GOAP StoreItemsAction to execute.
  */
 public class StorageHandler implements ICommandHandler {
@@ -208,7 +208,7 @@ public class StorageHandler implements ICommandHandler {
         return result;
     }
 
-    // ── storage_total — inventory + overflow + cached containers ─────
+    // ── storage_total — inventory + cached containers ─────
 
     private JsonObject handleTotal(JsonObject params) {
         LocalPlayer player = Minecraft.getInstance().player;
@@ -241,30 +241,13 @@ public class StorageHandler implements ICommandHandler {
                 }
             }
 
-            // Overflow count (virtual storage mod)
-            int overflowCount = 0;
-            try {
-                if (com.emma.overflow.OverflowClientMod.OverflowClientApi.isAvailable()) {
-                    JsonObject cached = com.emma.overflow.OverflowClientMod.OverflowClientApi.getCachedStatus();
-                    if (cached != null && cached.has("items")) {
-                        for (JsonElement oElem : cached.getAsJsonArray("items")) {
-                            JsonObject oObj = oElem.getAsJsonObject();
-                            if (oObj.get("item").getAsString().equals(fullName)) {
-                                overflowCount = oObj.get("count").getAsInt();
-                            }
-                        }
-                    }
-                }
-            } catch (NoClassDefFoundError | Exception ignored) {}
-
             // Container count from cache
             int containerCount = containerCounts.getOrDefault(fullName, 0);
 
             JsonObject itemTotals = new JsonObject();
             itemTotals.addProperty("inventory", invCount);
             itemTotals.addProperty("containers", containerCount);
-            itemTotals.addProperty("overflow", overflowCount);
-            itemTotals.addProperty("total", invCount + overflowCount + containerCount);
+            itemTotals.addProperty("total", invCount + containerCount);
             totals.add(itemName, itemTotals);
         }
 

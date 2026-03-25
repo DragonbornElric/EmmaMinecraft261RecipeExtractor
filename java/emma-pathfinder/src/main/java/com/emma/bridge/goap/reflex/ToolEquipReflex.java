@@ -112,6 +112,7 @@ public class ToolEquipReflex extends GoapReflex {
     /**
      * Equip the best tool from hotbar for the current breaking block.
      * Delegates to Emmatone's ToolSet for full-featured tool selection.
+     * Falls back to endinv extraction if no suitable tool is in hotbar.
      */
     private void equipBestToolForBreaking(LocalPlayer player, Minecraft client) {
         BlockState targetBlock = getBreakingBlockState(player, client);
@@ -121,6 +122,46 @@ public class ToolEquipReflex extends GoapReflex {
         int bestSlot = toolSet.getBestSlot(targetBlock.getBlock(), false);
         if (bestSlot != player.getInventory().getSelectedSlot()) {
             player.getInventory().setSelectedSlot(bestSlot);
+        }
+
+        // If held tool is still ineffective (hand/wrong tool), try endinv extraction
+        net.minecraft.world.item.ItemStack held = player.getMainHandItem();
+        if (held.isEmpty() || held.getDestroySpeed(targetBlock) <= 1.0f) {
+            tryExtractToolFromEndinv(player, targetBlock);
+        }
+    }
+
+    /**
+     * Extract the best matching tool from endinv when hotbar has nothing suitable.
+     * Uses block tags to determine the right tool type.
+     */
+    private void tryExtractToolFromEndinv(LocalPlayer player, BlockState targetBlock) {
+        if (!com.emma.bridge.util.EndinvBridge.isAvailable()) return;
+
+        // Determine which tool suffix this block needs
+        String suffix = null;
+        if (targetBlock.is(net.minecraft.tags.BlockTags.MINEABLE_WITH_PICKAXE)) suffix = "_pickaxe";
+        else if (targetBlock.is(net.minecraft.tags.BlockTags.MINEABLE_WITH_AXE)) suffix = "_axe";
+        else if (targetBlock.is(net.minecraft.tags.BlockTags.MINEABLE_WITH_SHOVEL)) suffix = "_shovel";
+        else if (targetBlock.is(net.minecraft.tags.BlockTags.MINEABLE_WITH_HOE)) suffix = "_hoe";
+        if (suffix == null) return;
+
+        // Find best tool of this type in endinv
+        String bestToolId = null;
+        int bestTier = -1;
+        for (var entry : com.emma.bridge.util.EndinvBridge.getAllItems().entrySet()) {
+            String id = entry.getKey();
+            if (!id.endsWith(suffix)) continue;
+            int tier = com.emma.bridge.util.ItemClassifier.getMaterialTier(id);
+            if (tier > bestTier) {
+                bestTier = tier;
+                bestToolId = id;
+            }
+        }
+
+        if (bestToolId != null) {
+            com.emma.bridge.util.EndinvBridge.extractToSlot(bestToolId,
+                    player.getInventory().getSelectedSlot());
         }
     }
 

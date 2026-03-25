@@ -412,7 +412,7 @@ Three tiers of goals:
 | **FleeFrom** | survive | safety | Threats nearby + low health/gear | Emmatone GoalRunAway 30 blocks. Critical health ×3 multiplier. |
 | **EatFood** | stay_fed | neutral | Has food, hunger < 18 | Equip food, hold use key 32+ ticks. Min active: 40 ticks. |
 | **MineBlock** | dynamic | resource_hoarding | Nearby blocks matching a goal | Emmatone mineByName(). Tag-aware matching. |
-| **CraftItem** | dynamic | resource_hoarding | Has recipe ingredients | 10-phase state machine: find table → place → navigate → open → fill grid → extract. Auto sub-crafts. |
+| **CraftItem** | dynamic | resource_hoarding | Has recipe ingredients | Recipe Book API: find table → navigate → open → handlePlaceRecipe → extract output. Auto sub-crafts crafting table via 2x2. |
 | **SmeltItem** | dynamic | resource_hoarding | Has furnace + materials | 10-phase state machine: find furnace → navigate → open → insert → wait → extract. |
 | **NavigateTo** | dynamic | exploration | Position-targeted goal exists | Emmatone GoalBlock pathfinding. Complete within 3 blocks. |
 | **PlaceTorch** | be_lit | neutral | Has torches, light ≤ threshold | Equip torch, place on floor or wall. 40-tick cooldown. |

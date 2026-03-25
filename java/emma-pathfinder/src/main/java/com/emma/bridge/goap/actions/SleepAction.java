@@ -200,12 +200,23 @@ public class SleepAction extends GoapAction {
             return;
         }
 
-        // Need a bed in inventory
+        // Need a bed in inventory — try extracting from endinv if not in player inv
         if (!hasBedInHotbarOrInventory(player)) {
-            EmmaBridgeMod.LOGGER.info("[GOAP Sleep] No bed available");
-            active = false;
-            phase = Phase.IDLE;
-            return;
+            boolean extracted = false;
+            for (Item bed : BED_ITEMS) {
+                if (com.emma.bridge.util.EndinvBridge.extractToSlot(bed,
+                        player.getInventory().getSelectedSlot())) {
+                    EmmaBridgeMod.LOGGER.info("[GOAP Sleep] Extracted bed from endinv");
+                    extracted = true;
+                    break;
+                }
+            }
+            if (!extracted) {
+                EmmaBridgeMod.LOGGER.info("[GOAP Sleep] No bed available");
+                active = false;
+                phase = Phase.IDLE;
+                return;
+            }
         }
 
         // In water — can't place
@@ -248,7 +259,7 @@ public class SleepAction extends GoapAction {
     private void tickNavigate(Minecraft client, LocalPlayer player) {
         BlockPos target = bedPos != null ? bedPos : navigateTarget;
 
-        switch (GoapNavHelper.tickNavigateToBlock(player, target, ++navTimeout, 200, 4.0)) {
+        switch (GoapNavHelper.tickNavigateToBlock(player, target, ++navTimeout, 200, 1.5)) {
             case NO_TARGET -> phase = Phase.FIND_BED;
             case ARRIVED -> {
                 if (navigateTarget != null) {
@@ -380,8 +391,8 @@ public class SleepAction extends GoapAction {
     private void tickCollectBed(Minecraft client, LocalPlayer player) {
         collectTicks++;
 
-        // Check if bed is back in inventory
-        if (hasBedInHotbarOrInventory(player)) {
+        // Check if bed is back in inventory (pickup may go to endinv)
+        if (hasBedInHotbarOrInventory(player) || hasBedInEndinv()) {
             phase = Phase.DONE;
             return;
         }
@@ -521,6 +532,15 @@ public class SleepAction extends GoapAction {
         for (Item bed : BED_ITEMS) {
             String id = BuiltInRegistries.ITEM.getKey(bed).toString();
             if (state.playerInventory.containsKey(id)) return true;
+            if (state.endinvInventory.containsKey(id)) return true;
+        }
+        return false;
+    }
+
+    private boolean hasBedInEndinv() {
+        for (Item bed : BED_ITEMS) {
+            String id = BuiltInRegistries.ITEM.getKey(bed).toString();
+            if (com.emma.bridge.util.EndinvBridge.getCount(id) > 0) return true;
         }
         return false;
     }

@@ -146,7 +146,10 @@ public class EquipBestArmorAction extends GoapAction {
                     continue;
                 }
 
-                // Find best candidate for this slot
+                // Find best candidate for this slot — player inventory first
+                String bestEndinvId = null;
+                float bestEndinvScore = -1;
+
                 for (int i = 0; i < 36; i++) {
                     ItemStack stack = player.getInventory().getItem(i);
                     if (stack.isEmpty()) continue;
@@ -163,8 +166,33 @@ public class EquipBestArmorAction extends GoapAction {
                     }
                 }
 
-                if (best != null && bestScore > currentScore) {
+                // Also check endinv for armor (base stats only — no enchant data)
+                if (com.emma.bridge.util.EndinvBridge.isAvailable()) {
+                    for (var entry : com.emma.bridge.util.EndinvBridge.getAllItems().entrySet()) {
+                        String id = entry.getKey();
+                        if (ItemClassifier.getArmorSlot(id) != slot) continue;
+                        // Score with base stats (no enchants, full durability)
+                        ArmorState baseState = new ArmorState(id, slot,
+                                java.util.Collections.emptyMap(), 1.0f, false);
+                        float score = ArmorScorer.score(baseState, dimIndex);
+                        if (score > bestEndinvScore) {
+                            bestEndinvScore = score;
+                            bestEndinvId = id;
+                        }
+                    }
+                }
+
+                if (best != null && bestScore > currentScore && bestScore >= bestEndinvScore) {
+                    // Best is in player inventory — shift-click to equip
                     ItemClassifier.shiftClick(client, player, best.inventorySlot);
+                } else if (bestEndinvId != null && bestEndinvScore > currentScore) {
+                    // Best is in endinv — extract to hotbar then shift-click
+                    int extractSlot = player.getInventory().getSelectedSlot();
+                    if (com.emma.bridge.util.EndinvBridge.extractToSlot(bestEndinvId, extractSlot)) {
+                        // Shift-click the extracted item from hotbar to armor slot
+                        // InventoryMenu: hotbar slots are 36-44
+                        ItemClassifier.shiftClick(client, player, extractSlot);
+                    }
                 }
             }
             swapping = true;

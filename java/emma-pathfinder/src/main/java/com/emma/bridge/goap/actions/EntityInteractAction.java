@@ -99,7 +99,7 @@ public class EntityInteractAction extends GoapAction {
 
     @Override
     public boolean checkPreconditions(WorldState worldState) {
-        return true;  // scoring determines viability
+        return true;
     }
 
     @Override
@@ -145,7 +145,7 @@ public class EntityInteractAction extends GoapAction {
                 ? goal.target.get("interact_tool").getAsString() : null;
 
         // Must have tool in inventory
-        if (toolName != null && !worldState.hasItemInInventory("minecraft:" + toolName, 1)) return 0;
+        if (toolName != null && !worldState.hasItem("minecraft:" + toolName, 1)) return 0;
 
         Class<? extends Entity> entityClass = ENTITY_CLASSES.get(entityClassName);
         if (entityClass == null) return 0;
@@ -166,7 +166,7 @@ public class EntityInteractAction extends GoapAction {
                 ? goal.target.get("interact_tool").getAsString() : null;
 
         // Must have tool in inventory
-        if (toolName != null && !worldState.hasItemInInventory("minecraft:" + toolName, 1)) return 0;
+        if (toolName != null && !worldState.hasItem("minecraft:" + toolName, 1)) return 0;
 
         // Search for block nearby
         BlockPos blockPos = findNearbyBlock(player, blockId);

@@ -56,9 +56,8 @@ class HeroMode:
         return result
 
     def deactivate(self) -> dict:
-        """Clear all hero goals and cancel active process."""
-        self.client.cancel()
-        result = self.client.set_goap_goals([])
+        """Clear all hero goals by switching to idle mode."""
+        result = self.client.set_mode("idle")
         self.active = False
         log.info("HeroMode deactivated")
         return result

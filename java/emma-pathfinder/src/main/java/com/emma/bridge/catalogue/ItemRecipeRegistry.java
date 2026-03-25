@@ -527,9 +527,13 @@ public class ItemRecipeRegistry {
         // Only add smeltFrom for actual SMELT entries.
         // STONECUTTER entries reuse smeltFrom for their input, but that's an
         // alternative production path, not a required prerequisite.
+        // Skip inputs that have ITEM_PROPERTIES (tools/weapons/armor) — those are
+        // recycling recipes (smelt iron_helmet → iron_nugget), not raw material paths.
         if (entry.getSmeltFrom() != null && entry.getObtainMethod().isSmeltType()) {
             for (String input : entry.getSmeltFrom()) {
-                deps.add(input);
+                if (!hasItemProperties(input)) {
+                    deps.add(input);
+                }
             }
         }
 
@@ -587,6 +591,109 @@ public class ItemRecipeRegistry {
                 result.add(dep);
             }
         }
+    }
+
+    /**
+     * Get transitive dependencies resolved against current inventory state.
+     * For each craft grid slot with alternatives (e.g., [oak_planks, spruce_planks, ...]):
+     *   - If any alternative is already owned → collapse to just that one (prune subtree)
+     *   - If none owned → keep ALL alternatives (let action scoring pick nearest at runtime)
+     * This prunes the tree naturally — having oak_wood means we don't expand all 12 log types.
+     *
+     * @param itemId   Item to resolve deps for
+     * @param hasItem  Predicate: does the player have this item? (full ID, e.g. "minecraft:oak_log")
+     * @return Topological-ordered list of needed deps (raw materials first)
+     */
+    public static List<String> getResolvedDependencies(String itemId,
+                                                        java.util.function.Predicate<String> hasItem) {
+        List<String> result = new ArrayList<>();
+        Set<String> visited = new HashSet<>();
+        walkResolvedDeps(itemId, visited, result, hasItem);
+        return result;
+    }
+
+    private static void walkResolvedDeps(String itemId, Set<String> visited,
+                                          List<String> result,
+                                          java.util.function.Predicate<String> hasItem) {
+        if (visited.contains(itemId)) return;
+        visited.add(itemId);
+
+        for (String dep : getResolvedDirectDeps(itemId, hasItem)) {
+            walkResolvedDeps(dep, visited, result, hasItem);
+            if (!result.contains(dep)) {
+                result.add(dep);
+            }
+        }
+    }
+
+    /**
+     * Get direct dependencies for an item, resolving slot alternatives.
+     * For craft grid slots with multiple alternatives, picks the best one.
+     */
+    private static Set<String> getResolvedDirectDeps(String itemId,
+                                                      java.util.function.Predicate<String> hasItem) {
+        List<ItemRecipeEntry> entryList = getEntries(itemId);
+        if (entryList.isEmpty()) return Collections.emptySet();
+
+        Set<String> deps = new LinkedHashSet<>();
+        for (ItemRecipeEntry entry : entryList) {
+            deps.addAll(getResolvedDepsForEntry(entry, hasItem));
+        }
+        return deps;
+    }
+
+    private static Set<String> getResolvedDepsForEntry(ItemRecipeEntry entry,
+                                                        java.util.function.Predicate<String> hasItem) {
+        if (entry.getDependencies() != null && entry.getDependencies().length > 0) {
+            return new LinkedHashSet<>(Arrays.asList(entry.getDependencies()));
+        }
+
+        Set<String> deps = new LinkedHashSet<>();
+
+        if (entry.getCraftGrid() != null) {
+            for (String[] slotAlts : entry.getCraftGrid()) {
+                if (slotAlts != null && slotAlts.length > 0) {
+                    // If we already have any alternative for this slot, collapse to just that one.
+                    // Otherwise keep ALL alternatives so action scoring can pick the nearest.
+                    String owned = null;
+                    for (String alt : slotAlts) {
+                        String full = alt.contains(":") ? alt : "minecraft:" + alt;
+                        if (hasItem.test(full)) {
+                            owned = alt;
+                            break;
+                        }
+                    }
+                    if (owned != null) {
+                        deps.add(owned);
+                    } else {
+                        Collections.addAll(deps, slotAlts);
+                    }
+                }
+            }
+        }
+
+        // Non-craft deps have no slot alternatives — same as getDependenciesForEntry
+        // Skip inputs that have ITEM_PROPERTIES (recycling recipes, not raw material paths)
+        if (entry.getSmeltFrom() != null && entry.getObtainMethod().isSmeltType()) {
+            for (String input : entry.getSmeltFrom()) {
+                if (!hasItemProperties(input)) {
+                    deps.add(input);
+                }
+            }
+        }
+        if (entry.getSmithTemplate() != null) Collections.addAll(deps, entry.getSmithTemplate());
+        if (entry.getSmithBase() != null) Collections.addAll(deps, entry.getSmithBase());
+        if (entry.getSmithMaterial() != null) Collections.addAll(deps, entry.getSmithMaterial());
+        if (entry.getStonecutterFrom() != null && entry.getObtainMethod() == ObtainMethod.STONECUTTER) {
+            Collections.addAll(deps, entry.getStonecutterFrom());
+        }
+        if (entry.getTransformInput() != null) deps.add(entry.getTransformInput());
+        if (entry.getInteractTool() != null) deps.add(entry.getInteractTool());
+        if (entry.getBrewIngredient() != null && entry.getObtainMethod().isBrewType()) {
+            Collections.addAll(deps, entry.getBrewIngredient());
+        }
+
+        return deps;
     }
 
     /**
@@ -741,6 +848,21 @@ public class ItemRecipeRegistry {
         return brewContainers;
     }
 
+    // ── Item property helpers ─────────────────────────────────────
+
+    /**
+     * Check if an item has an ITEM_PROPERTIES entry (tools, weapons, armor).
+     * Used to filter finished products from smelting dependency graphs —
+     * recycling recipes (smelt iron_helmet → iron_nugget) should not create
+     * acquisition subgoals for those items.
+     */
+    public static boolean hasItemProperties(String itemId) {
+        for (ItemRecipeEntry entry : getEntries(itemId)) {
+            if (entry.getObtainMethod() == ObtainMethod.ITEM_PROPERTIES) return true;
+        }
+        return false;
+    }
+
     // ── Dimension helpers ─────────────────────────────────────────
 
     /**
@@ -797,6 +919,7 @@ public class ItemRecipeRegistry {
         cropSeedMap = null;
         foodCandidatesSorted = null;
         foodKnowledgeBuilt = false;
+        RecipeBookLookup.invalidate();
     }
 
 }

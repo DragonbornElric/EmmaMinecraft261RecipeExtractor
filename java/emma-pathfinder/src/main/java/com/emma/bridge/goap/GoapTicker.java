@@ -13,6 +13,12 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.BlockPos;
 
+import com.emma.bridge.BridgeServer;
+import com.emma.bridge.commands.SetModeHandler;
+import com.emma.bridge.websocket.JsonProtocol;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+
 import java.util.*;
 
 /**
@@ -39,12 +45,19 @@ public class GoapTicker {
     private final ReflexLayer reflexLayer = new ReflexLayer();
     private final GoalDecomposer decomposer = new GoalDecomposer();
     private PortalRegistry portalRegistry;
+    private BaseRegistry baseRegistry;
 
     private com.emma.bridge.events.ContainerTracker containerTracker = null;
+    private BridgeServer bridgeServer = null;
 
     private GoapAction activeAction = null;
     private int activeActionTicks = 0;  // ticks since activeAction.execute()
+    private boolean activeActionWasActive = false;  // true if isActive() returned true at least once this stint
     private boolean enabled = false;
+
+    /** GOAP briefing: emitted on action switch, throttled to avoid flood. */
+    private static final long BRIEFING_COOLDOWN_MS = 3000;
+    private long lastBriefingMs = 0;
 
     /** Throttle: only score every N ticks (1 = every tick). */
     private int scoreInterval = 1;
@@ -58,7 +71,7 @@ public class GoapTicker {
     /** Block scanner: runs every 20 ticks (1 second) to populate nearbyBlocks. */
     private static final int BLOCK_SCAN_INTERVAL = 20;
     private static final int BLOCK_SCAN_RADIUS = 32;
-    private static final int BLOCK_SCAN_Y_RANGE = 8;
+    private static final int BLOCK_SCAN_Y_RANGE = 32;
     private int blockScanCounter = 0;
 
     /** Goal decomposition: event-driven with debounce. */
@@ -91,6 +104,22 @@ public class GoapTicker {
         if (portalRegistry != null) {
             worldState.hasNetherPortal = portalRegistry.hasPortalAccess(worldState.dimension, "nether_portal");
             worldState.hasEndPortal = portalRegistry.hasPortalAccess(worldState.dimension, "end_portal");
+        }
+
+        // Populate base location from BaseRegistry
+        if (baseRegistry != null) {
+            var nearestBase = baseRegistry.getNearestBase(worldState.posX, worldState.posZ, worldState.dimension);
+            if (nearestBase.isPresent()) {
+                var base = nearestBase.get();
+                worldState.hasBase = true;
+                worldState.baseX = base.x();
+                worldState.baseY = base.y();
+                worldState.baseZ = base.z();
+                worldState.baseName = base.name();
+            } else {
+                worldState.hasBase = false;
+                worldState.baseName = null;
+            }
         }
 
         // Update End-dimension state (dragon, crystals)
@@ -209,6 +238,7 @@ public class GoapTicker {
                 // Activate new action
                 activeAction = winner;
                 activeActionTicks = 0;
+                activeActionWasActive = false;
                 try {
                     activeAction.execute(client);
                 } catch (Exception e) {
@@ -216,10 +246,35 @@ public class GoapTicker {
                 }
 
                 // Log action switch
+                float winnerScore = getActionScore(winner.getName());
                 if (loggingEnabled) {
-                    float winnerScore = getActionScore(winner.getName());
                     EmmaBridgeMod.LOGGER.info("[GOAP] Switch: {} -> {} ({}) | HP: {} | Food: {} | Threats: {}",
                             oldName, winner.getName(), String.format("%.1f", winnerScore),
+                            String.format("%.0f", worldState.health),
+                            worldState.foodItemCount, worldState.threats.size());
+                }
+
+                // Emit goap_briefing event to Emma (throttled)
+                emitGoapBriefing(oldName, winner.getName(), winnerScore, client);
+            }
+
+            // If the action was active and then deactivated itself (e.g., CraftItem
+            // finished one recipe) but still scores positively (next recipe in chain
+            // ready), re-execute. The activeActionWasActive guard prevents firing on
+            // actions that never report isActive()=true (e.g., NavigateTo).
+            if (activeActionWasActive && !activeAction.isActive()) {
+                activeActionWasActive = false;  // reset for next stint
+                try {
+                    activeAction.execute(client);
+                    activeActionTicks = 0;
+                    scorer.resetStallTracking(worldState);
+                } catch (Exception e) {
+                    EmmaBridgeMod.LOGGER.error("[GOAP] Error re-executing {}", activeAction.getName(), e);
+                }
+                if (loggingEnabled) {
+                    float reScore = getActionScore(activeAction.getName());
+                    EmmaBridgeMod.LOGGER.info("[GOAP] Re-execute: {} ({}) | HP: {} | Food: {} | Threats: {}",
+                            activeAction.getName(), String.format("%.1f", reScore),
                             String.format("%.0f", worldState.health),
                             worldState.foodItemCount, worldState.threats.size());
                 }
@@ -231,6 +286,11 @@ public class GoapTicker {
                 activeAction.tick(client);
             } catch (Exception e) {
                 EmmaBridgeMod.LOGGER.warn("[GOAP] Error ticking {}", activeAction.getName(), e);
+            }
+
+            // Track if the action became active (so we can detect self-deactivation later)
+            if (activeAction.isActive()) {
+                activeActionWasActive = true;
             }
         }
 
@@ -330,12 +390,117 @@ public class GoapTicker {
         return portalRegistry;
     }
 
+    /** Set the BaseRegistry for persistent base location tracking. */
+    public void setBaseRegistry(BaseRegistry registry) {
+        this.baseRegistry = registry;
+    }
+
+    public BaseRegistry getBaseRegistry() {
+        return baseRegistry;
+    }
+
     public GoapAction getActiveAction() {
         return activeAction;
     }
 
     public ReflexLayer getReflexLayer() {
         return reflexLayer;
+    }
+
+    /** Set the BridgeServer for emitting goap_briefing events. */
+    public void setBridgeServer(BridgeServer server) {
+        this.bridgeServer = server;
+    }
+
+    // ── GOAP Briefing ─────────────────────────────────────────────
+
+    /**
+     * Emit a goap_briefing event when the active action switches.
+     * Includes all goals, vitals, nearby threats, mode, and a compact heightmap.
+     * Throttled to one briefing per BRIEFING_COOLDOWN_MS.
+     */
+    private void emitGoapBriefing(String previousAction, String currentAction,
+                                   float currentScore, Minecraft client) {
+        if (bridgeServer == null || !bridgeServer.hasConnections()) return;
+
+        long now = System.currentTimeMillis();
+        if (now - lastBriefingMs < BRIEFING_COOLDOWN_MS) return;
+        lastBriefingMs = now;
+
+        JsonObject payload = new JsonObject();
+        payload.addProperty("previous_action", previousAction);
+        payload.addProperty("current_action", currentAction);
+        payload.addProperty("current_score", currentScore);
+        payload.addProperty("mode", SetModeHandler.getCurrentMode().name().toLowerCase());
+
+        // All goals with priorities
+        payload.add("goals", goalSet.toJson());
+
+        // Vitals
+        JsonObject vitals = new JsonObject();
+        vitals.addProperty("health", worldState.health);
+        vitals.addProperty("max_health", worldState.maxHealth);
+        vitals.addProperty("hunger", worldState.hunger);
+        vitals.addProperty("armor", worldState.armorValue);
+        vitals.addProperty("dimension", worldState.dimension);
+        vitals.addProperty("threat_count", worldState.threats.size());
+        vitals.addProperty("food_items", worldState.foodItemCount);
+        vitals.addProperty("light_level", worldState.lightLevel);
+        payload.add("vitals", vitals);
+
+        // Nearby threats (up to 5)
+        JsonArray threats = new JsonArray();
+        int threatLimit = Math.min(5, worldState.threats.size());
+        for (int i = 0; i < threatLimit; i++) {
+            var threat = worldState.threats.get(i);
+            JsonObject t = new JsonObject();
+            t.addProperty("type", threat.type);
+            t.addProperty("distance", Math.round(threat.distance * 10.0) / 10.0);
+            t.addProperty("health", threat.health);
+            threats.add(t);
+        }
+        payload.add("nearby_threats", threats);
+
+        // Compact heightmap (11x11 grid, step=2, radius=10 blocks)
+        if (client.level != null && client.player != null) {
+            payload.add("heightmap", buildCompactHeightmap(client));
+        }
+
+        bridgeServer.broadcastEvent(JsonProtocol.event("goap_briefing", payload));
+    }
+
+    /**
+     * Build a compact 11x11 heightmap centered on the player.
+     * Step=2, radius=10 → covers 21x21 block area downsampled to 11x11.
+     */
+    private JsonObject buildCompactHeightmap(Minecraft client) {
+        int cx = client.player.blockPosition().getX();
+        int cz = client.player.blockPosition().getZ();
+        int radius = 10;
+        int step = 2;
+
+        JsonArray rows = new JsonArray();
+        int minY = Integer.MAX_VALUE, maxY = Integer.MIN_VALUE;
+
+        for (int z = cz - radius; z <= cz + radius; z += step) {
+            JsonArray row = new JsonArray();
+            for (int x = cx - radius; x <= cx + radius; x += step) {
+                int y = client.level.getHeight(
+                        net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE, x, z) - 1;
+                row.add(y);
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+            }
+            rows.add(row);
+        }
+
+        JsonObject hm = new JsonObject();
+        hm.add("heights", rows);
+        hm.addProperty("center_x", cx);
+        hm.addProperty("center_z", cz);
+        hm.addProperty("min_y", minY);
+        hm.addProperty("max_y", maxY);
+        return hm;
     }
 
     // ── Logging ───────────────────────────────────────────────────
@@ -403,25 +568,35 @@ public class GoapTicker {
         targetBlocks.add("minecraft:nether_portal");
         targetBlocks.add("minecraft:end_portal_frame");
 
-        if (targetBlocks.isEmpty()) {
-            worldState.setNearbyBlocks(Map.of());
-            return;
-        }
+        // When no base exists in overworld, also scan for village indicators
+        boolean scanVillage = !worldState.hasBase
+                && worldState.dimension.contains("overworld");
+        Set<String> villageTargets = scanVillage
+                ? com.emma.bridge.goap.actions.EstablishBaseAction.VILLAGE_INDICATOR_BLOCKS
+                : Set.of();
 
         // Build a set of Block objects for fast matching
         Map<Block, String> blockToId = new HashMap<>();
         for (String blockId : targetBlocks) {
-            var id = blockId.contains(":") ?
-                    net.minecraft.resources.Identifier.parse(blockId) :
-                    net.minecraft.resources.Identifier.fromNamespaceAndPath("minecraft", blockId);
-            Block block = BuiltInRegistries.BLOCK.getValue(id);
-            if (block != null && block != net.minecraft.world.level.block.Blocks.AIR) {
-                blockToId.put(block, blockId);
+            resolveBlock(blockId, blockToId);
+        }
+        // Village indicators go into a separate lookup for routing
+        Map<Block, String> villageBlockToId = new HashMap<>();
+        for (String blockId : villageTargets) {
+            if (!blockToId.containsValue(blockId)) {  // avoid duplicate scanning
+                resolveBlock(blockId, villageBlockToId);
             }
+        }
+
+        if (blockToId.isEmpty() && villageBlockToId.isEmpty()) {
+            worldState.setNearbyBlocks(Map.of());
+            worldState.setVillageBlocks(Map.of());
+            return;
         }
 
         // Scan in radius around player
         Map<String, List<BlockPos>> result = new HashMap<>();
+        Map<String, List<BlockPos>> villageResult = new HashMap<>();
         BlockPos center = player.blockPosition();
 
         for (int dx = -BLOCK_SCAN_RADIUS; dx <= BLOCK_SCAN_RADIUS; dx++) {
@@ -434,6 +609,11 @@ public class GoapTicker {
                     String id = blockToId.get(block);
                     if (id != null) {
                         result.computeIfAbsent(id, k -> new ArrayList<>()).add(pos);
+                    }
+                    // Village indicators route to separate map
+                    String vid = villageBlockToId.get(block);
+                    if (vid != null) {
+                        villageResult.computeIfAbsent(vid, k -> new ArrayList<>()).add(pos);
                     }
                 }
             }
@@ -449,10 +629,22 @@ public class GoapTicker {
         }
 
         worldState.setNearbyBlocks(result);
+        worldState.setVillageBlocks(villageResult);
 
         // Auto-save detected portals to PortalRegistry
         if (portalRegistry != null) {
             autoSavePortals(result);
+        }
+    }
+
+    /** Resolve a block ID string to a Block object and add to the lookup map. */
+    private void resolveBlock(String blockId, Map<Block, String> map) {
+        var id = blockId.contains(":")
+                ? net.minecraft.resources.Identifier.parse(blockId)
+                : net.minecraft.resources.Identifier.fromNamespaceAndPath("minecraft", blockId);
+        Block block = BuiltInRegistries.BLOCK.getValue(id);
+        if (block != null && block != net.minecraft.world.level.block.Blocks.AIR) {
+            map.put(block, blockId);
         }
     }
 
@@ -534,42 +726,34 @@ public class GoapTicker {
             }
         }
 
-        // Expand tag equivalents: if any log variant is needed, add ALL log variants
-        expandTagEquivalents(blocks);
-
-        return blocks;
-    }
-
-    /**
-     * MC recipes resolve tags (#logs, #planks, #stone_tool_materials) to one
-     * specific variant, but any member of the tag works. If any variant of a
-     * tag group appears in the block set, add all variants.
-     */
-    private static void expandTagEquivalents(Set<String> blocks) {
-        // Log variants — all interchangeable for planks recipes
-        List<String> allLogs = List.of(
-                "minecraft:oak_log", "minecraft:spruce_log", "minecraft:birch_log",
-                "minecraft:jungle_log", "minecraft:acacia_log", "minecraft:dark_oak_log",
-                "minecraft:mangrove_log", "minecraft:cherry_log", "minecraft:pale_oak_log",
-                "minecraft:crimson_stem", "minecraft:warped_stem"
-        );
-
-        // Stone variants — cobblestone, blackstone, cobbled_deepslate all work for stone tools
-        List<String> stoneMaterials = List.of(
-                "minecraft:stone", "minecraft:cobblestone", "minecraft:deepslate",
-                "minecraft:cobbled_deepslate", "minecraft:blackstone"
-        );
-
-        expandGroup(blocks, allLogs);
-        expandGroup(blocks, stoneMaterials);
-    }
-
-    private static void expandGroup(Set<String> blocks, List<String> group) {
-        for (String member : group) {
-            if (blocks.contains(member)) {
-                blocks.addAll(group);
-                return;
+        // Also include mine_block targets from derived goals (e.g., tool prereq
+        // chains that aren't in getTransitiveDependencies — cobblestone for
+        // stone_pickaxe when the goal is iron_pickaxe)
+        for (GoalSet.Goal dg : goalSet.getDerivedGoals()) {
+            if (dg.target == null) continue;
+            if (dg.target.has("mine_block")) {
+                String mb = dg.target.get("mine_block").getAsString();
+                blocks.add(mb.contains(":") ? mb : "minecraft:" + mb);
+            }
+            // Also check the item directly for MINE entries
+            if (dg.target.has("item") && dg.target.has("obtain_method")) {
+                String method = dg.target.get("obtain_method").getAsString();
+                if ("MINE".equals(method)) {
+                    String itemId = dg.target.get("item").getAsString();
+                    String cleanId = itemId.contains(":") ? itemId.split(":")[1] : itemId;
+                    for (ItemRecipeEntry entry : ItemRecipeRegistry.getEntries(cleanId)) {
+                        if (entry.getObtainMethod() != ObtainMethod.MINE) continue;
+                        String[] mineBlocks = entry.getMineBlockNames();
+                        if (mineBlocks != null) {
+                            for (String block : mineBlocks) {
+                                blocks.add(block.contains(":") ? block : "minecraft:" + block);
+                            }
+                        }
+                    }
+                }
             }
         }
+
+        return blocks;
     }
 }

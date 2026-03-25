@@ -1,5 +1,6 @@
 package com.emma.bridge.commands;
 
+import com.emma.bridge.catalogue.ItemRecipeRegistry;
 import com.emma.bridge.goap.GoalSet;
 import com.emma.bridge.goap.GoapTicker;
 import com.emma.bridge.goap.UtilityScorer;
@@ -13,23 +14,55 @@ import java.util.Set;
 /**
  * WebSocket command: set_mode
  *
- * Activates a named GOAP mode with tier-based goal sets.
- * All goal/tier/personality logic lives here — Python sends a single command.
+ * Activates a named GOAP mode. All goal/tier/personality logic lives here —
+ * Python sends a single command.
  *
  * Params:
+ *   {"mode": "stop"}
+ *   {"mode": "idle"}
  *   {"mode": "hero", "tier": "diamond"}
+ *   {"mode": "gamer"}
  *
  * Supported modes:
- *   hero — combat-focused hostile hunting with tiered equipment goals
- *
- * Supported tiers: iron, diamond, netherite (default: diamond)
- *
- * Example:
- *   @hero              → hero mode, diamond tier
- *   @hero iron         → hero mode, iron tier
- *   @hero netherite    → hero mode, netherite tier
+ *   stop  — GOAP off, goals cleared
+ *   idle  — GOAP on, survival goals only (building/item goals added separately)
+ *   hero  — combat-focused hostile hunting with tiered equipment goals
+ *   gamer — beat-the-game: kill_dragon composite goal + tech tree
  */
 public class SetModeHandler implements ICommandHandler {
+
+    // ── Mode tracking ───────────────────────────────────────────────
+
+    public enum GoapMode { STOP, IDLE, HERO, GAMER }
+
+    private static GoapMode currentMode = GoapMode.STOP;
+
+    public static GoapMode getCurrentMode() { return currentMode; }
+
+    // ── Personality presets ──────────────────────────────────────────
+
+    private static final Map<String, Float> NEUTRAL_PERSONALITY = Map.of(
+            "safety", 1.2f,
+            "aggression", 0.8f,
+            "exploration", 0.5f,
+            "resource_hoarding", 0.8f
+    );
+
+    private static final Map<String, Float> HERO_PERSONALITY = Map.of(
+            "safety", 0.5f,
+            "aggression", 2.0f,
+            "exploration", 1.5f,
+            "resource_hoarding", 0.8f
+    );
+
+    private static final Map<String, Float> GAMER_OVERWORLD_PERSONALITY = Map.of(
+            "safety", 1.0f,
+            "aggression", 0.6f,
+            "exploration", 1.2f,
+            "resource_hoarding", 1.5f
+    );
+
+    // ── Constants ───────────────────────────────────────────────────
 
     private static final Set<String> VALID_TIERS = Set.of("iron", "diamond", "netherite");
     private static final String[] TOOL_TYPES = {"pickaxe", "sword", "axe", "shovel", "hoe"};
@@ -62,19 +95,50 @@ public class SetModeHandler implements ICommandHandler {
 
         String mode = params.get("mode").getAsString().toLowerCase();
 
-        switch (mode) {
-            case "hero" -> {
-                return executeHero(params, result);
-            }
+        return switch (mode) {
+            case "stop"  -> executeStop(result);
+            case "idle"  -> executeIdle(result);
+            case "hero"  -> executeHero(params, result);
+            case "gamer" -> executeGamer(result);
             default -> {
                 result.addProperty("status", "error");
-                result.addProperty("error", "Unknown mode: " + mode + ". Supported: hero");
-                return result;
+                result.addProperty("error", "Unknown mode: " + mode + ". Supported: stop, idle, hero, gamer");
+                yield result;
             }
-        }
+        };
     }
 
-    // ── Hero mode ─────────────────────────────────────────────────
+    // ── Stop mode ──────────────────────────────────────────────────
+
+    private JsonObject executeStop(JsonObject result) {
+        ticker.setEnabled(false);
+        goalSet.setDynamicGoals(List.of());
+        scorer.setPersonalityWeights(NEUTRAL_PERSONALITY);
+        currentMode = GoapMode.STOP;
+
+        result.addProperty("status", "ok");
+        result.addProperty("mode", "stop");
+        result.addProperty("goap_enabled", false);
+        return result;
+    }
+
+    // ── Idle mode ──────────────────────────────────────────────────
+
+    private JsonObject executeIdle(JsonObject result) {
+        goalSet.setDynamicGoals(List.of());
+        scorer.setPersonalityWeights(NEUTRAL_PERSONALITY);
+        ticker.setEnabled(true);
+        ticker.triggerDecomposition();
+        currentMode = GoapMode.IDLE;
+
+        result.addProperty("status", "ok");
+        result.addProperty("mode", "idle");
+        result.addProperty("goap_enabled", true);
+        result.add("all_goals", goalSet.toJson());
+        return result;
+    }
+
+    // ── Hero mode ──────────────────────────────────────────────────
 
     private JsonObject executeHero(JsonObject params, JsonObject result) {
         String tier = params.has("tier") ? params.get("tier").getAsString().toLowerCase() : "diamond";
@@ -85,23 +149,13 @@ public class SetModeHandler implements ICommandHandler {
             return result;
         }
 
-        // 1. Enable GOAP
         ticker.setEnabled(true);
+        scorer.setPersonalityWeights(HERO_PERSONALITY);
 
-        // 2. Set aggressive personality
-        scorer.setPersonalityWeights(Map.of(
-                "safety", 0.5f,
-                "aggression", 2.0f,
-                "exploration", 1.5f,
-                "resource_hoarding", 0.3f
-        ));
-
-        // 3. Build tier-based goals
         List<GoalSet.Goal> goals = buildHeroGoals(tier);
         goalSet.setDynamicGoals(goals);
-
-        // 4. Decompose goals immediately
         ticker.triggerDecomposition();
+        currentMode = GoapMode.HERO;
 
         result.addProperty("status", "ok");
         result.addProperty("mode", "hero");
@@ -111,6 +165,30 @@ public class SetModeHandler implements ICommandHandler {
         result.add("all_goals", goalSet.toJson());
         return result;
     }
+
+    // ── Gamer mode (beat-the-game / kill dragon) ───────────────────
+
+    private JsonObject executeGamer(JsonObject result) {
+        ticker.setEnabled(true);
+        scorer.setPersonalityWeights(GAMER_OVERWORLD_PERSONALITY);
+
+        // Single composite goal — GoalDecomposer handles the full tech tree
+        List<GoalSet.Goal> goals = List.of(
+                new GoalSet.Goal("kill_dragon", "kill_dragon", 15.0f, new JsonObject())
+        );
+        goalSet.setDynamicGoals(goals);
+        ticker.triggerDecomposition();
+        currentMode = GoapMode.GAMER;
+
+        result.addProperty("status", "ok");
+        result.addProperty("mode", "gamer");
+        result.addProperty("goals_set", goals.size());
+        result.addProperty("goap_enabled", true);
+        result.add("all_goals", goalSet.toJson());
+        return result;
+    }
+
+    // ── Hero goal builder ──────────────────────────────────────────
 
     private List<GoalSet.Goal> buildHeroGoals(String tier) {
         List<GoalSet.Goal> goals = new ArrayList<>();
@@ -137,10 +215,9 @@ public class SetModeHandler implements ICommandHandler {
         // Iron armor: 6.4 → 6.1
         addArmorGoals(goals, "iron", 6.4f);
 
-        // ── Food (always) ──
+        // ── Food (always — dynamic from recipe registry) ──
 
-        goals.add(itemGoal("hero_food_beef", "minecraft:cooked_beef", 16, 6.0f));
-        goals.add(itemGoal("hero_food_bread", "minecraft:bread", 8, 5.5f));
+        addFoodGoals(goals, 6.0f);
 
         // ── Diamond tier (diamond and netherite) ──
 
@@ -188,6 +265,24 @@ public class SetModeHandler implements ICommandHandler {
             String itemId = "minecraft:" + material + "_" + slot;
             String goalId = "hero_" + material + "_" + slot;
             goals.add(itemGoal(goalId, itemId, 1, basePriority - (i * 0.1f)));
+        }
+    }
+
+    /**
+     * Add food goals from ItemRecipeRegistry. Picks the top 2 foods by acquisition
+     * efficiency with nutrition >= 4 (same ranking CollectFoodAction uses).
+     */
+    private void addFoodGoals(List<GoalSet.Goal> goals, float basePriority) {
+        int added = 0;
+        for (var candidate : ItemRecipeRegistry.getFoodCandidatesByEfficiency()) {
+            if (candidate.nutrition() < 4) continue;
+            String fullItem = "minecraft:" + candidate.itemId();
+            String goalId = "hero_food_" + candidate.itemId();
+            // First food: 16 count at base priority, second: 8 count at -0.5
+            int count = added == 0 ? 16 : 8;
+            float priority = basePriority - (added * 0.5f);
+            goals.add(itemGoal(goalId, fullItem, count, priority));
+            if (++added >= 2) break;
         }
     }
 

@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "endless_inventory:item/endinv_accessor"
+  }
+}

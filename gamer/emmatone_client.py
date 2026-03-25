@@ -83,6 +83,13 @@ class EmmatoneClient:
         self._smelting_tracker = SmeltingTracker()
         self._container_cache: dict[tuple[int, int, int], dict] = {}  # (x,y,z) → event data
 
+        # GOAP briefing + combat state (populated by events from Java)
+        self._last_goap_briefing: dict | None = None
+        self._last_goap_briefing_time: float = 0
+        self._goap_mode: str = "idle"
+        self._in_combat: bool = False
+        self._combat_start: float = 0
+
     # ── Connection ────────────────────────────────────────────
 
     def connect(self, reconnect: bool = True):
@@ -434,6 +441,14 @@ class EmmatoneClient:
         """Get current bridge mod / Emmatone state."""
         return self._send_command("status", {}, timeout)
 
+    def get_last_briefing(self) -> dict | None:
+        """Last GOAP briefing event data, or None if never received."""
+        return self._last_goap_briefing
+
+    def get_goap_mode(self) -> str:
+        """Current GOAP mode: stop, idle, hero, or gamer."""
+        return self._goap_mode
+
     def goap_debug(self, include_world_state: bool = False,
                   timeout: float = 5.0) -> dict:
         """Get GOAP planner debug state: auction, goals, personality, switch history."""
@@ -469,8 +484,23 @@ class EmmatoneClient:
         return self._send_command("set_personality", weights, timeout)
 
     def set_mode(self, mode: str, tier: str = "diamond", timeout: float = 5.0) -> dict:
-        """Activate a named GOAP mode. Tiers: iron, diamond, netherite."""
+        """Activate a named GOAP mode: stop, idle, hero, gamer."""
         return self._send_command("set_mode", {"mode": mode, "tier": tier}, timeout)
+
+    def set_build_mode(self, building: bool, timeout: float = 5.0) -> dict:
+        """Deprecated — build mode removed. Building is now a GOAP goal."""
+        import warnings
+        warnings.warn("set_build_mode() is deprecated; use set_build_goal() instead", DeprecationWarning, stacklevel=2)
+        return {"status": "ok", "deprecated": True}
+
+    def set_build_goal(self, build_id: str, name: str, origin: dict,
+                       blocks: list, materials: dict, priority: float = 5.0,
+                       timeout: float = 10.0) -> dict:
+        """Send a build phase to Java GOAP. Materials become have_item subgoals."""
+        return self._send_command("set_build_goal", {
+            "build_id": build_id, "name": name, "origin": origin,
+            "blocks": blocks, "materials": materials, "priority": priority,
+        }, timeout)
 
     # ── Portal commands ──────────────────────────────────────────
 
@@ -605,6 +635,14 @@ class EmmatoneClient:
         """Register handler for an event type (e.g., 'block_placed').
         Handlers are called on the listener thread — keep them fast."""
         self._event_handlers.setdefault(event, []).append(handler)
+
+    def off(self, event: str, handler: Callable):
+        """Unregister a specific event handler."""
+        handlers = self._event_handlers.get(event, [])
+        try:
+            handlers.remove(handler)
+        except ValueError:
+            pass
 
     # ── State accessors ───────────────────────────────────────
 
@@ -1207,6 +1245,24 @@ class EmmatoneClient:
         # Active task
         parts.append(f"Task: {self._active_task or 'idle'}")
 
+        # GOAP briefing (if recent — within 30 seconds)
+        if self._last_goap_briefing and (time.time() - self._last_goap_briefing_time) < 30:
+            b = self._last_goap_briefing
+            parts.append(f"GOAP Action: {b.get('current_action', '?')} "
+                         f"(was {b.get('previous_action', '?')})")
+            parts.append(f"Mode: {self._goap_mode}")
+            # Summarize top goals by priority (non-derived only)
+            goals = b.get("goals", [])
+            top_goals = [g for g in goals if not g.get("is_derived")]
+            if top_goals:
+                goal_strs = [f"{g['id']}(pri={g.get('priority', '?')})" for g in top_goals[:5]]
+                parts.append(f"Goals: {', '.join(goal_strs)}")
+
+        # Combat state
+        if self._in_combat:
+            combat_dur = time.time() - self._combat_start if self._combat_start else 0
+            parts.append(f"IN COMBAT ({combat_dur:.0f}s)")
+
         # Position — landmark-relative if POIs exist
         try:
             from gamer.poi import POIRegistry, _COMPASS_NAMES
@@ -1624,6 +1680,26 @@ class EmmatoneClient:
             except Exception:
                 pass
 
+        elif event_name == "goap_briefing":
+            self._last_goap_briefing = data
+            self._last_goap_briefing_time = time.time()
+            self._goap_mode = data.get("mode", "idle")
+            log.info("GOAP briefing: %s -> %s (mode=%s, threats=%d)",
+                     data.get("previous_action", "?"),
+                     data.get("current_action", "?"),
+                     self._goap_mode,
+                     len(data.get("nearby_threats", [])))
+
+        elif event_name == "combat_engage":
+            self._in_combat = True
+            self._combat_start = time.time()
+            log.info("Combat engaged: %d hostiles", data.get("total", 0))
+
+        elif event_name == "combat_disengage":
+            self._in_combat = False
+            log.info("Combat disengaged after %.1fs",
+                     data.get("duration_seconds", 0))
+
         # Store in recent events ring buffer
         self._push_event(event_name, data)
 
@@ -1715,38 +1791,38 @@ class EmmatoneClient:
     # ── Named Base System ─────────────────────────────────────
 
     def set_base(self, name: str, x: int, y: int, z: int,
-                 radius: int = 10) -> dict:
-        """Register a named base at the given coordinates.
+                 radius: int = 32,
+                 dimension: str = "minecraft:overworld",
+                 timeout: float = 5.0) -> dict:
+        """Register a named base location in the Java GOAP system.
+
+        The GOAP agent will navigate to the nearest base when starving
+        underground with no local food sources.
 
         Examples:
             set_base("main", 100, 64, 200)
             set_base("forge", -50, 70, 300, radius=15)
         """
-        return self.emmaclef_task("setbase", f"{name} {x} {y} {z} {radius}")
+        return self._send_command("set_base", {
+            "name": name, "x": x, "y": y, "z": z,
+            "radius": radius, "dimension": dimension,
+        }, timeout)
 
-    def list_bases(self) -> dict:
-        """List all registered named bases."""
-        return self.emmaclef_task("listbases")
+    def list_bases(self, dimension: str | None = None,
+                   timeout: float = 5.0) -> dict:
+        """List all registered bases."""
+        params = {}
+        if dimension:
+            params["dimension"] = dimension
+        return self._send_command("get_bases", params, timeout)
 
-    def clear_base(self, name: str) -> dict:
+    def clear_base(self, name: str,
+                   dimension: str = "minecraft:overworld",
+                   timeout: float = 5.0) -> dict:
         """Remove a named base."""
-        return self.emmaclef_task("clearbase", name)
-
-    def protect_base(self, name: str, enabled: bool = True) -> dict:
-        """Toggle block-breaking protection for a named base."""
-        return self.emmaclef_task("protectbase",
-                                 f"{name} {'on' if enabled else 'off'}")
-
-    def get_from_base(self, item: str, count: int = 1,
-                      base: str = "free") -> dict:
-        """Get items, optionally routing to a named base.
-
-        Examples:
-            get_from_base("iron_ingot", 5, "main")   # smelt at main base
-            get_from_base("iron_ingot", 5)            # free mode (temp container)
-            get_from_base("diamond_pickaxe", 1, "forge")
-        """
-        return self.emmaclef_task("get", f"{base} {item} {count}")
+        return self._send_command("remove_base", {
+            "name": name, "dimension": dimension,
+        }, timeout)
 
     # ── Chat / Server Commands ────────────────────────────────
 
@@ -1940,7 +2016,7 @@ class EmmatoneClient:
 
     def storage_total(self, item_names: list[str],
                       timeout: float = 5.0) -> dict[str, dict]:
-        """Query total counts for items across inventory + overflow + all cached containers.
+        """Query total counts for items across inventory + all cached containers.
 
         Merges Java in-memory cache with persistent DB cache for cross-session recall.
 
@@ -1948,7 +2024,7 @@ class EmmatoneClient:
             item_names: list of item names (e.g. ["oak_planks", "stone_bricks"])
 
         Returns:
-            {item_name: {"inventory": int, "containers": int, "overflow": int, "total": int}}
+            {item_name: {"inventory": int, "containers": int, "total": int}}
         """
         result = self._send_command("storage", {
             "action": "total",
@@ -1967,7 +2043,6 @@ class EmmatoneClient:
                     totals[name]["containers"] = db_count
                     totals[name]["total"] = (
                         totals[name].get("inventory", 0)
-                        + totals[name].get("overflow", 0)
                         + db_count
                     )
 
@@ -2046,103 +2121,12 @@ class EmmatoneClient:
         }, timeout=timeout)
         return result.get("data", {})
 
-    # ── Overflow inventory management ─────────────────────────
-
-    def overflow_trash(self, items: dict[str, int],
-                       timeout: float = 5.0) -> dict:
-        """Permanently destroy items from inventory. No drop entity, instant.
-
-        Args:
-            items: {item_name: count} e.g. {"cobblestone": 256, "dirt": 128}
-        """
-        item_list = [{"item": name, "count": count} for name, count in items.items()]
-        result = self._send_command("overflow", {
-            "action": "trash", "items": item_list
-        }, timeout=timeout)
-        return result.get("data", {})
-
-    def overflow_deposit(self, items: dict[str, int],
-                         timeout: float = 5.0) -> dict:
-        """Move items from inventory to virtual overflow (retrievable later).
-
-        Only works for generic stackable items (no tools/enchanted/armor).
-        Args:
-            items: {item_name: count}
-        """
-        item_list = [{"item": name, "count": count} for name, count in items.items()]
-        result = self._send_command("overflow", {
-            "action": "deposit", "items": item_list
-        }, timeout=timeout)
-        return result.get("data", {})
-
-    def overflow_withdraw(self, items: dict[str, int],
-                          timeout: float = 5.0) -> dict:
-        """Retrieve items from virtual overflow back to inventory.
-
-        Args:
-            items: {item_name: count}
-        """
-        item_list = [{"item": name, "count": count} for name, count in items.items()]
-        result = self._send_command("overflow", {
-            "action": "withdraw", "items": item_list
-        }, timeout=timeout)
-        return result.get("data", {})
-
-    def overflow_status(self, timeout: float = 5.0) -> dict:
-        """Get contents of the virtual overflow inventory.
-
-        Returns:
-            {items: [{item, count}], used_slots, free_slots, capacity}
-        """
-        result = self._send_command("overflow", {
-            "action": "status"
-        }, timeout=timeout)
-        return result.get("data", {})
-
-    # Default junk items to trash when clearing inventory.
-    DEFAULT_JUNK_ITEMS = [
-        "minecraft:cobblestone", "minecraft:dirt", "minecraft:gravel",
-        "minecraft:diorite", "minecraft:andesite", "minecraft:granite",
-        "minecraft:tuff", "minecraft:cobbled_deepslate", "minecraft:netherrack",
-        "minecraft:sand", "minecraft:red_sand", "minecraft:clay_ball",
-    ]
-
-    def overflow_clear_junk(self, junk_items: list[str] | None = None,
-                            timeout: float = 5.0) -> dict:
-        """Auto-trash junk items from inventory.
-
-        Args:
-            junk_items: Items to consider junk. Defaults to DEFAULT_JUNK_ITEMS.
-        Returns:
-            {cleared: [{item, count}], total_cleared, inventory_free}
-        """
-        items = junk_items or self.DEFAULT_JUNK_ITEMS
-        result = self._send_command("overflow", {
-            "action": "clear_junk", "junk_items": items,
-        }, timeout=timeout)
-        return result.get("data", {})
-
-    def overflow_free_slots(self, target: int = 5,
-                            timeout: float = 5.0) -> dict:
-        """Proactively free N inventory slots (trash junk first, then overflow).
-
-        Args:
-            target: desired number of free inventory slots
-        Returns:
-            {slots_freed, inventory_free, method}
-        """
-        result = self._send_command("overflow", {
-            "action": "free_slots", "target": target
-        }, timeout=timeout)
-        return result.get("data", {})
-
     def full_inventory(self, timeout: float = 5.0) -> dict:
-        """Combined view of player inventory + overflow.
+        """Combined view of player inventory.
 
         Returns:
-            {items: {name: {inventory, overflow, total}},
+            {items: {name: {inventory, total, slots}},
              inventory_slots: {used, free, capacity},
-             overflow_slots: {used, free, capacity},
              selected_slot: int}
         """
         inv = self.get_inventory(timeout)
@@ -2160,24 +2144,11 @@ class EmmatoneClient:
             inv_counts[name] = inv_counts.get(name, 0) + s.get("count", 1)
             inv_slots.setdefault(name, []).append(s.get("slot", -1))
 
-        # Get overflow (may fail if mod not loaded)
-        overflow_counts: dict[str, int] = {}
-        overflow_data: dict = {}
-        try:
-            overflow_data = self.overflow_status(timeout)
-            for entry in overflow_data.get("items", []):
-                overflow_counts[entry["item"]] = entry["count"]
-        except Exception:
-            pass
-
-        # Merge totals
-        all_items = sorted(set(inv_counts) | set(overflow_counts))
         items = {}
-        for name in all_items:
+        for name in sorted(inv_counts):
             items[name] = {
-                "inventory": inv_counts.get(name, 0),
-                "overflow": overflow_counts.get(name, 0),
-                "total": inv_counts.get(name, 0) + overflow_counts.get(name, 0),
+                "inventory": inv_counts[name],
+                "total": inv_counts[name],
                 "slots": inv_slots.get(name, []),
             }
 
@@ -2188,11 +2159,6 @@ class EmmatoneClient:
             "items": items,
             "inventory_slots": {
                 "used": used_main, "free": 36 - used_main, "capacity": 36,
-            },
-            "overflow_slots": {
-                "used": overflow_data.get("used_slots", 0),
-                "free": overflow_data.get("free_slots", 0),
-                "capacity": overflow_data.get("capacity", 0),
             },
             "selected_slot": inv_data.get("selected_slot", 0),
         }

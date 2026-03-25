@@ -68,7 +68,7 @@ public class TransformBlockAction extends GoapAction {
 
     @Override
     public boolean checkPreconditions(WorldState worldState) {
-        return true;  // scoring determines viability
+        return true;
     }
 
     @Override
@@ -138,7 +138,7 @@ public class TransformBlockAction extends GoapAction {
     private float scoreWaterContact(GoalSet.Goal goal, LocalPlayer player,
                                      WorldState worldState, String input) {
         // Must have input item (concrete powder) in inventory
-        if (input != null && !worldState.hasItemInInventory("minecraft:" + input, 1)) return 0;
+        if (input != null && !worldState.hasItem("minecraft:" + input, 1)) return 0;
 
         // Must find water nearby
         if (!hasWaterNearby(player)) return 0;
@@ -360,7 +360,8 @@ public class TransformBlockAction extends GoapAction {
                     if (entry.getMineBlockNames() == null) continue;
                     for (String block : entry.getMineBlockNames()) {
                         String fullBlock = block.contains(":") ? block : "minecraft:" + block;
-                        if (!TagGroups.findNearbyWithTagEquivalents(state, fullBlock).isEmpty()) {
+                        List<BlockPos> found = state.nearbyBlocks.get(fullBlock);
+                        if (found != null && !found.isEmpty()) {
                             return true;
                         }
                     }

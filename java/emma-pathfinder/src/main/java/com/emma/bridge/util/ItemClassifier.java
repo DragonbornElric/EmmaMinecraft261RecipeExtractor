@@ -19,6 +19,9 @@ public final class ItemClassifier {
 
     // ── Material tiers (higher = better) ─────────────────────────
 
+    public static final int TIER_UNKNOWN   = -100;
+    public static final int TIER_WOODEN    = -2;
+    public static final int TIER_STONE     = -1;
     public static final int TIER_LEATHER   = 0;
     public static final int TIER_GOLD      = 1;
     public static final int TIER_CHAINMAIL = 2;
@@ -38,18 +41,20 @@ public final class ItemClassifier {
 
     /**
      * Returns a material tier score where higher = better.
-     * 0=leather, 1=gold, 2=chainmail, 3=iron, 4=diamond, 5=netherite.
-     * Returns 0 for unknown materials.
+     * -2=wooden, -1=stone, 0=leather, 1=gold, 2=chainmail, 3=iron, 4=diamond, 5=netherite.
+     * Returns {@link Integer#MIN_VALUE} for unknown materials.
      */
     public static int getMaterialTier(String item) {
-        if (item == null) return 0;
+        if (item == null) return TIER_UNKNOWN;
         if (item.contains("netherite")) return TIER_NETHERITE;
         if (item.contains("diamond"))   return TIER_DIAMOND;
         if (item.contains("iron"))      return TIER_IRON;
         if (item.contains("chainmail")) return TIER_CHAINMAIL;
         if (item.contains("golden") || item.contains("gold")) return TIER_GOLD;
         if (item.contains("leather"))   return TIER_LEATHER;
-        return 0;
+        if (item.contains("stone"))     return TIER_STONE;
+        if (item.contains("wooden"))    return TIER_WOODEN;
+        return TIER_UNKNOWN;
     }
 
     /**
@@ -173,7 +178,27 @@ public final class ItemClassifier {
             }
         }
 
-        if (bestSlot < 0) return false;
+        if (bestSlot < 0) {
+            // Fallback: extract best tool from Endless Inventory
+            if (EndinvBridge.isAvailable()) {
+                String bestToolId = null;
+                int bestEndinvRank = Integer.MAX_VALUE;
+                for (var entry : EndinvBridge.getAllItems().entrySet()) {
+                    String cat = getToolCategory(entry.getKey());
+                    if (!category.equals(cat)) continue;
+                    int rank = getToolTierRank(entry.getKey());
+                    if (rank < bestEndinvRank) {
+                        bestEndinvRank = rank;
+                        bestToolId = entry.getKey();
+                    }
+                }
+                if (bestToolId != null) {
+                    return EndinvBridge.extractToSlot(bestToolId,
+                            player.getInventory().getSelectedSlot());
+                }
+            }
+            return false;
+        }
 
         if (bestSlot < 9) {
             // Already in hotbar — just select it

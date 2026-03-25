@@ -66,22 +66,27 @@ emma-pathfinder (Java Fabric mod)
 | Mod | Purpose |
 |-----|---------|
 | `emma-pathfinder/` | **Main mod** — Emmatone + WebSocket bridge + GOAP. Output: `emma-bridge-mod-0.2.0.jar` |
-| `emma-overflow/` | Overflow prevention mod. Output: `emma-overflow-0.1.0.jar` |
 | `emma-gameplay-logger/` | Gameplay event logger. Output: `emma-gameplay-logger-0.1.0.jar` |
+| `emma-endinv/` | Endless Inventory (RPG-style infinite storage). Output: `emma-endinv-1.2.0.jar` |
+| `emma-twitch/` | Twitch viewer interaction (channel points + bits). Output: `emma-twitch-0.1.0.jar` |
+| `emma-recipe-extractor/` | One-shot recipe/drop/item data extraction (`/emma_extract`). Output: `emma-recipe-extractor-0.1.0.jar` |
 
 ### Build & Deploy
 
 ```bash
-cd java && ./build_and_deploy.sh          # all mods + deploy
-cd java && ./build_and_deploy.sh --bridge  # bridge + overflow only
+cd java && ./build_and_deploy.sh                  # all mods + deploy
+cd java && ./build_and_deploy.sh --bridge          # bridge only
+cd java && ./build_and_deploy.sh --endinv          # endless inventory only
+cd java && ./build_and_deploy.sh --recipe-extractor # recipe extractor only (on-demand, server)
 ```
 
 Manual: `cd java/emma-pathfinder && ./gradlew.bat build`
 
 ### Deployment Targets
 
-- Emma: `%APPDATA%\PrismLauncher\instances\Emma\.minecraft\mods\`
-- CameraBot: `%APPDATA%\PrismLauncher\instances\CameraBot\.minecraft\mods\`
+- Emma: `%APPDATA%\PrismLauncher\instances\Emma\.minecraft\mods\` — bridge + endinv
+- CameraBot: `%APPDATA%\PrismLauncher\instances\CameraBot\.minecraft\mods\` — bridge only
+- Elric: `%APPDATA%\PrismLauncher\instances\Elric\.minecraft\mods\` — endinv only
 
 ## Database
 
@@ -123,10 +128,14 @@ The config dict passed to `gamer.configure()` should contain:
 - **Scored Actions:** AttackEntity, FleeFrom, EatFood, MineBlock, CraftItem, SmeltItem, NavigateTo, PlaceTorch, StoreItems, EquipBestArmor, DeathRecovery, EnvironmentalHazard, CollectFood, ProjectileDodge, Unstuck.
 - **Zero external AI dependencies** — all actions use MinecraftClient + Emmatone APIs directly.
 
+## Code Review Rules
+
+- **Treat code comments as potentially wrong.** Trace actual data flow to verify claims made in comments. Comments like "// resolve tag alternatives" may describe intent that the code doesn't actually implement correctly. Always read what the code *does*, not what the comment *says* it does.
+
 ## Key Conventions
 
 - **Unobfuscated source** — MC 26.1 ships with real names; Yarn discontinued; all mods use `loom.officialMojangMappings()` (identity on 26.1)
-- **MC 26.1** (Pre-Release 2), Fabric Loader 0.18.4, Fabric Loom 1.15, Java 25
+- **MC 26.1**, Fabric Loader 0.18.4, Fabric Loom 1.15, Java 25
 - Emmatone is bundled inside `emma-bridge-mod-0.2.0.jar` — no separate JAR
 - WebSocket protocol: `{id, method, params}` → `{id, result/error}`; unsolicited `{method, params}` events
 - **Never use `MinecraftClient.getInstance().execute()` for Emmatone calls** — deadlocks. Use tick queue pattern.

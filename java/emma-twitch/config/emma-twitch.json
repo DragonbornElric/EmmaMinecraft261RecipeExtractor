@@ -1,0 +1,26 @@
+{
+  "twitch" : {
+    "client_id" : "7f7pml7qzw8vo3k9vwnf2bupoxarba",
+    "client_secret" : "qmkztdr20vbgff9g0zhx7je63l3qfk",
+    "access_token" : "",
+    "refresh_token" : "",
+    "channel_id" : "1376794997",
+    "channel_name" : "Elric_Heart"
+  },
+  "reward_mappings" : { },
+  "bit_tiers" : [
+    { "min_bits" : 100, "effect_id" : "summon_entity_zombie", "enabled" : true },
+    { "min_bits" : 250, "effect_id" : "lava", "enabled" : true },
+    { "min_bits" : 500, "effect_id" : "explode", "enabled" : true },
+    { "min_bits" : 1000, "effect_id" : "clear_inventory", "enabled" : true }
+  ],
+  "global_cooldown_seconds" : 30,
+  "effect_cooldowns" : {
+    "explode" : 120,
+    "clear_inventory" : 300,
+    "kill" : 300,
+    "lava" : 120
+  },
+  "disabled_effects" : [ ],
+  "web_port" : 8780
+}

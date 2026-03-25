@@ -60,6 +60,9 @@ public final class GoapNavHelper {
         goalProcess().setGoalAndPath(new GoalBlock(pos));
     }
 
+    /** Arrival distance for container interactions (crafting table, furnace, chest, etc.). */
+    public static final double CONTAINER_ARRIVAL_DIST = 2.0;
+
     // ── Navigate-to-block tick helper ───────────────────────────
 
     /**
@@ -99,9 +102,9 @@ public final class GoapNavHelper {
     }
 
     /**
-     * Convenience overload with default arrival distance of 4.5 and timeout of 200 ticks.
+     * Convenience overload with default arrival distance of 3.0 and timeout of 200 ticks.
      */
     public static NavResult tickNavigateToBlock(LocalPlayer player, BlockPos target, int waitTicks) {
-        return tickNavigateToBlock(player, target, waitTicks, 200, 4.5);
+        return tickNavigateToBlock(player, target, waitTicks, 200, 3.0);
     }
 }

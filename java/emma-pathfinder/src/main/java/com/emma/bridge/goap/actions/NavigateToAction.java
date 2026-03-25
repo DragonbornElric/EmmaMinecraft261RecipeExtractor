@@ -35,8 +35,6 @@ public class NavigateToAction extends GoapAction {
 
     @Override
     public boolean checkPreconditions(WorldState state) {
-        // Can't access GoalSet from preconditions -- always viable.
-        // If no goals have position targets, computeScore returns 0 and we're never selected.
         return true;
     }
 

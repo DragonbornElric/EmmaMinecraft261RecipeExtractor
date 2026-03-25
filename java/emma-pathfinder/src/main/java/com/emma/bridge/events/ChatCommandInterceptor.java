@@ -80,8 +80,33 @@ public class ChatCommandInterceptor {
         String argStr = parts.length > 1 ? parts[1].trim() : "";
 
         switch (cmd) {
+            // ── Modes ──
+            case "stop" -> {
+                JsonObject modeParams = new JsonObject();
+                modeParams.addProperty("mode", "stop");
+                dispatch("set_mode", modeParams);
+                sendResponse("Stop: GOAP disabled, goals cleared");
+            }
+            case "idle" -> {
+                JsonObject modeParams = new JsonObject();
+                modeParams.addProperty("mode", "idle");
+                dispatch("set_mode", modeParams);
+                sendResponse("Idle: survival only, GOAP enabled");
+            }
+            case "hero" -> {
+                parseHero(argStr);
+            }
+            case "gamer" -> {
+                JsonObject modeParams = new JsonObject();
+                modeParams.addProperty("mode", "gamer");
+                JsonObject modeResult = dispatch("set_mode", modeParams);
+                if (modeResult != null && modeResult.has("goals_set")) {
+                    sendResponse("Gamer: kill_dragon goal set, GOAP enabled");
+                }
+            }
+
             // ── Navigation ──
-            case "stop", "cancel" -> {
+            case "cancel" -> {
                 dispatch("cancel", new JsonObject());
             }
             case "goto" -> {
@@ -143,11 +168,6 @@ public class ChatCommandInterceptor {
                 JsonObject params = new JsonObject();
                 if (!argStr.isEmpty()) params.addProperty("crop", argStr);
                 dispatch("farm", params);
-            }
-
-            // ── Modes ──
-            case "hero" -> {
-                parseHero(argStr);
             }
 
             // ── Combat / Torch / Other ──

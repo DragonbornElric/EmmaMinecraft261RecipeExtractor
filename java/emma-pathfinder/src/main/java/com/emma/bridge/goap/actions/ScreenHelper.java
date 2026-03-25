@@ -39,28 +39,4 @@ public final class ScreenHelper {
         return -1;
     }
 
-    /**
-     * Find a slot containing the given item OR a tag-equivalent item in a container menu.
-     * Falls back to tag group matching if exact match not found.
-     *
-     * @return slot index, or -1 if not found
-     */
-    public static int findItemOrTagEquivalent(AbstractContainerMenu handler, int startSlot, String itemId) {
-        // Exact match first
-        int exact = findItem(handler, startSlot, itemId);
-        if (exact != -1) return exact;
-
-        // Tag equivalent fallback
-        String tagGroup = TagGroups.getItemTagGroup(itemId);
-        if (tagGroup != null) {
-            for (int i = startSlot; i < handler.slots.size(); i++) {
-                var stack = handler.slots.get(i).getItem();
-                if (!stack.isEmpty()) {
-                    String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
-                    if (tagGroup.equals(TagGroups.getItemTagGroup(id))) return i;
-                }
-            }
-        }
-        return -1;
-    }
 }

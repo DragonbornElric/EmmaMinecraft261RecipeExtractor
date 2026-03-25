@@ -96,7 +96,7 @@ public class HuntMobAction extends GoapAction {
 
     @Override
     public boolean checkPreconditions(WorldState state) {
-        return true;  // scoring determines viability
+        return true;
     }
 
     @Override

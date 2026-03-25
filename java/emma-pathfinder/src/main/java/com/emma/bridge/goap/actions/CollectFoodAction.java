@@ -4,6 +4,7 @@ import emmatone.api.EmmatoneAPI;
 import com.emma.bridge.EmmaBridgeMod;
 import com.emma.bridge.catalogue.ItemRecipeEntry;
 import com.emma.bridge.catalogue.ItemRecipeRegistry;
+import com.emma.bridge.goap.BaseRegistry;
 import com.emma.bridge.goap.GoapAction;
 import com.emma.bridge.goap.GoalSet;
 import com.emma.bridge.goap.WorldState;
@@ -21,11 +22,10 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Collect food when food supply is low — fully data-driven via ItemRecipeRegistry
@@ -43,20 +43,18 @@ public class CollectFoodAction extends GoapAction {
 
     public static final int LOW_FOOD_THRESHOLD = 8;    // start collecting before empty
     private static final int TARGET_FOOD_COUNT = 16;    // collect a meaningful supply
-    private static final int WITHDRAW_TIMEOUT_TICKS = 60;
-    private static final int GOAL_STALL_TIMEOUT = 200;  // 10 seconds
+    private static final int GOAL_STALL_TIMEOUT = 200;  // 10 seconds (crafting goals)
+    private static final int NAV_STALL_TIMEOUT = 600;   // 30 seconds (navigation goals)
+    /** Sea level — secondary underground check for open caverns with stray skylight. */
+    private static final int SEA_LEVEL_Y = 60;
 
-    private enum Phase { CHECK_OVERFLOW, WITHDRAW_WAIT, EVALUATE, DIRECT_GATHER, GOAL_CHAIN_MONITOR }
+    private enum Phase { EVALUATE, DIRECT_GATHER, GOAL_CHAIN_MONITOR }
     private enum GatherStrategy { PICKUP_ITEM, HARVEST_BLOCK, HUNT_ANIMAL }
 
-    private Phase phase = Phase.CHECK_OVERFLOW;
+    private Phase phase = Phase.EVALUATE;
     private boolean active = false;
     private GatherStrategy gatherStrategy;
     private Entity targetEntity;                // animal or ground item entity
-
-    // Overflow integration
-    private final AtomicBoolean withdrawComplete = new AtomicBoolean(false);
-    private int withdrawWaitTicks = 0;
 
     // Mode B: goal chain
     private String activeFoodGoalId;            // non-null when Mode B is active
@@ -64,12 +62,22 @@ public class CollectFoodAction extends GoapAction {
     private int lastFoodCount;                  // for stall detection
     private float lastComputedScore;            // cached for goal priority
 
-    // GoalSet reference (injected by GoapTicker)
+    // Navigation goal tracking (Priority 5 & 6)
+    private boolean isNavigationGoal;           // true when goal is navigate_to (base or surface)
+    private double lastDistanceToTarget;        // for navigation stall detection
+    private int navTargetX, navTargetY, navTargetZ;  // cached target for distance checks
+
+    // GoalSet + BaseRegistry references (injected by EmmaBridgeClient wiring)
     private GoalSet goalSetRef;
+    private BaseRegistry baseRegistryRef;
     private WorldState cachedWorldState;  // cached from last computeScore for use in tick
 
     public void setGoalSet(GoalSet goals) {
         this.goalSetRef = goals;
+    }
+
+    public void setBaseRegistry(BaseRegistry registry) {
+        this.baseRegistryRef = registry;
     }
 
     @Override
@@ -84,7 +92,6 @@ public class CollectFoodAction extends GoapAction {
 
     @Override
     public boolean checkPreconditions(WorldState state) {
-        // If a food goal chain is active, don't compete — let other actions work
         if (activeFoodGoalId != null) return false;
         return state.foodItemCount < LOW_FOOD_THRESHOLD;
     }
@@ -119,17 +126,7 @@ public class CollectFoodAction extends GoapAction {
     @Override
     public void execute(Minecraft client) {
         active = true;
-        phase = Phase.CHECK_OVERFLOW;
-        withdrawComplete.set(false);
-        withdrawWaitTicks = 0;
-
-        // Try overflow first
-        if (tryWithdrawFoodFromOverflow()) {
-            phase = Phase.WITHDRAW_WAIT;
-            EmmaBridgeMod.LOGGER.info("[CollectFood] Found food in overflow, withdrawing...");
-        } else {
-            phase = Phase.EVALUATE;
-        }
+        phase = Phase.EVALUATE;
     }
 
     @Override
@@ -138,26 +135,9 @@ public class CollectFoodAction extends GoapAction {
         if (player == null) return;
 
         switch (phase) {
-            case WITHDRAW_WAIT -> tickWithdrawWait(player);
             case EVALUATE -> evaluateAndAct(client, player);
             case DIRECT_GATHER -> tickDirectGather(client, player);
             case GOAL_CHAIN_MONITOR -> tickGoalChainMonitor(player);
-            default -> {}
-        }
-    }
-
-    // ── Overflow phase ──────────────────────────────────────────
-
-    private void tickWithdrawWait(LocalPlayer player) {
-        withdrawWaitTicks++;
-        if (withdrawComplete.get() || withdrawWaitTicks >= WITHDRAW_TIMEOUT_TICKS) {
-            int food = countFoodInInventory(player);
-            if (food >= LOW_FOOD_THRESHOLD) {
-                EmmaBridgeMod.LOGGER.info("[CollectFood] Got food from overflow ({} items), done", food);
-                active = false;
-                return;
-            }
-            phase = Phase.EVALUATE;
         }
     }
 
@@ -228,7 +208,19 @@ public class CollectFoodAction extends GoapAction {
             }
         }
 
-        // Nothing available — stay active briefly then give up
+        // Priority 5: Navigate to known base (underground with no local food sources)
+        if (goalSetRef != null && isUndergroundOverworld(cachedWorldState)) {
+            if (cachedWorldState.hasBase) {
+                activateNavigateToBase(cachedWorldState);
+                return;
+            }
+
+            // Priority 6: Navigate to surface using heightmap (underground, no base)
+            activateNavigateToSurface(client, player);
+            return;
+        }
+
+        // Nothing available on the surface — unusual edge case
         EmmaBridgeMod.LOGGER.info("[CollectFood] No food sources found nearby");
         active = false;
     }
@@ -318,11 +310,34 @@ public class CollectFoodAction extends GoapAction {
             return;
         }
 
-        // Stall detection
+        // Stall detection — different strategies for crafting vs. navigation goals
         if (currentFood > lastFoodCount) {
+            // Food increased — progress for any goal type
             goalStallTicks = 0;
             lastFoodCount = currentFood;
+        } else if (isNavigationGoal) {
+            // Navigation stall: check if bot is moving closer to target
+            double dx = player.getX() - navTargetX;
+            double dy = player.getY() - navTargetY;
+            double dz = player.getZ() - navTargetZ;
+            double currentDist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+            if (currentDist < lastDistanceToTarget - 1.0) {
+                // Making progress toward target — reset stall
+                goalStallTicks = 0;
+                lastDistanceToTarget = currentDist;
+            } else {
+                goalStallTicks++;
+            }
+
+            if (goalStallTicks >= NAV_STALL_TIMEOUT) {
+                EmmaBridgeMod.LOGGER.info("[CollectFood] Navigation goal stalled at dist={}, reassessing",
+                        String.format("%.0f", currentDist));
+                cleanupFoodGoal();
+                phase = Phase.EVALUATE;
+            }
         } else {
+            // Crafting stall: food count unchanged
             goalStallTicks++;
             if (goalStallTicks >= GOAL_STALL_TIMEOUT) {
                 EmmaBridgeMod.LOGGER.info("[CollectFood] Goal chain stalled, reassessing");
@@ -339,6 +354,109 @@ public class CollectFoodAction extends GoapAction {
         }
         activeFoodGoalId = null;
         goalStallTicks = 0;
+        isNavigationGoal = false;
+        lastDistanceToTarget = Double.MAX_VALUE;
+    }
+
+    // ── Priority 5 & 6: Navigate to base / surface ─────────────
+
+    /**
+     * Check if the bot is underground in the overworld.
+     * Two-pronged: no sky exposure (skyLight == 0) OR below sea level (Y < 60).
+     * Only applies in the overworld — Nether/End always have skyLight 0.
+     */
+    private boolean isUndergroundOverworld(WorldState state) {
+        if (state == null) return false;
+        if (!state.dimension.equals("minecraft:overworld")) return false;
+        return state.skyLight == 0 || state.posY < SEA_LEVEL_Y;
+    }
+
+    /**
+     * Priority 5: Navigate to the nearest registered base.
+     * Injects a navigate_to goal that NavigateToAction picks up.
+     */
+    private void activateNavigateToBase(WorldState state) {
+        activeFoodGoalId = "food_return_to_base";
+        goalStallTicks = 0;
+        isNavigationGoal = true;
+        navTargetX = state.baseX;
+        navTargetY = state.baseY;
+        navTargetZ = state.baseZ;
+        lastDistanceToTarget = Math.sqrt(
+                (state.posX - navTargetX) * (state.posX - navTargetX)
+                + (state.posY - navTargetY) * (state.posY - navTargetY)
+                + (state.posZ - navTargetZ) * (state.posZ - navTargetZ));
+
+        JsonObject target = new JsonObject();
+        target.addProperty("x", state.baseX);
+        target.addProperty("y", state.baseY);
+        target.addProperty("z", state.baseZ);
+
+        float goalPriority = lastComputedScore + 2.0f;
+        goalSetRef.addDynamicGoal(new GoalSet.Goal(
+                activeFoodGoalId, "navigate_to", goalPriority, target));
+
+        EmmaBridgeMod.LOGGER.info("[CollectFood] Priority 5: Underground with no food, navigating to base '{}' at ({},{},{})",
+                state.baseName, state.baseX, state.baseY, state.baseZ);
+
+        lastFoodCount = Minecraft.getInstance().player != null
+                ? countFoodInInventory(Minecraft.getInstance().player) : 0;
+        active = false; // yield to NavigateToAction
+        phase = Phase.GOAL_CHAIN_MONITOR;
+    }
+
+    /**
+     * Priority 6: Navigate to the surface when no base is registered.
+     * Uses MOTION_BLOCKING heightmap to find real surface Y, then walks
+     * down up to 5 blocks to find a standable (solid) block.
+     */
+    private void activateNavigateToSurface(Minecraft client, LocalPlayer player) {
+        if (client.level == null) {
+            EmmaBridgeMod.LOGGER.info("[CollectFood] No world available for heightmap lookup");
+            active = false;
+            return;
+        }
+
+        int px = player.blockPosition().getX();
+        int pz = player.blockPosition().getZ();
+        int heightmapY = client.level.getHeight(Heightmap.Types.MOTION_BLOCKING, px, pz) - 1;
+
+        // Walk down from heightmap Y to find a standable surface (max 5 blocks)
+        int surfaceY = heightmapY;
+        for (int dy = 0; dy <= 5; dy++) {
+            BlockPos check = new BlockPos(px, heightmapY - dy, pz);
+            if (client.level.getBlockState(check).isSolid()) {
+                surfaceY = heightmapY - dy + 1; // stand ON TOP of the solid block
+                break;
+            }
+        }
+
+        activeFoodGoalId = "food_surface_escape";
+        goalStallTicks = 0;
+        isNavigationGoal = true;
+        navTargetX = px;
+        navTargetY = surfaceY;
+        navTargetZ = pz;
+        lastDistanceToTarget = Math.sqrt(
+                (player.getX() - navTargetX) * (player.getX() - navTargetX)
+                + (player.getY() - navTargetY) * (player.getY() - navTargetY)
+                + (player.getZ() - navTargetZ) * (player.getZ() - navTargetZ));
+
+        JsonObject target = new JsonObject();
+        target.addProperty("x", px);
+        target.addProperty("y", surfaceY);
+        target.addProperty("z", pz);
+
+        float goalPriority = lastComputedScore + 1.5f;
+        goalSetRef.addDynamicGoal(new GoalSet.Goal(
+                activeFoodGoalId, "navigate_to", goalPriority, target));
+
+        EmmaBridgeMod.LOGGER.info("[CollectFood] Priority 6: Underground with no food and no base, navigating to surface Y={}",
+                surfaceY);
+
+        lastFoodCount = countFoodInInventory(player);
+        active = false; // yield to NavigateToAction
+        phase = Phase.GOAL_CHAIN_MONITOR;
     }
 
     // ── Lifecycle ───────────────────────────────────────────────
@@ -347,9 +465,7 @@ public class CollectFoodAction extends GoapAction {
     public void onDeactivated(Minecraft client) {
         active = false;
         targetEntity = null;
-        phase = Phase.CHECK_OVERFLOW;
-        withdrawComplete.set(false);
-        withdrawWaitTicks = 0;
+        phase = Phase.EVALUATE;
         // Don't clean up food goal on deactivation — it should persist for other actions
         cancelPathing();
     }
@@ -455,55 +571,26 @@ public class CollectFoodAction extends GoapAction {
         return null;
     }
 
-    // ── Overflow integration ────────────────────────────────────
-
-    private boolean tryWithdrawFoodFromOverflow() {
-        try {
-            if (!com.emma.overflow.OverflowClientMod.OverflowClientApi.isAvailable()) {
-                return false;
-            }
-
-            JsonObject cached = com.emma.overflow.OverflowClientMod.OverflowClientApi.getCachedStatus();
-            if (cached == null || !cached.has("items")) return false;
-
-            JsonArray foodToWithdraw = new JsonArray();
-            for (JsonElement elem : cached.getAsJsonArray("items")) {
-                JsonObject item = elem.getAsJsonObject();
-                String itemId = item.get("item").getAsString();
-                if (ItemClassifier.isFood(itemId)) {
-                    JsonObject withdrawItem = new JsonObject();
-                    withdrawItem.addProperty("item", itemId);
-                    withdrawItem.addProperty("count", Math.min(item.get("count").getAsInt(), 64));
-                    foodToWithdraw.add(withdrawItem);
-                    break;
-                }
-            }
-
-            if (foodToWithdraw.isEmpty()) return false;
-
-            JsonObject request = new JsonObject();
-            request.addProperty("action", "withdraw");
-            request.add("items", foodToWithdraw);
-
-            CompletableFuture<JsonObject> future =
-                    com.emma.overflow.OverflowClientMod.OverflowClientApi.sendRequest(request);
-            future.whenComplete((result, error) -> {
-                if (error != null) {
-                    EmmaBridgeMod.LOGGER.warn("[CollectFood] Overflow withdraw failed: {}", error.getMessage());
-                }
-                withdrawComplete.set(true);
-            });
-
-            return true;
-        } catch (NoClassDefFoundError e) {
-            return false;
-        }
-    }
-
     // ── Utility ─────────────────────────────────────────────────
 
     private int countFoodInInventory(LocalPlayer player) {
-        return InventoryScanner.countItems(player.getInventory(),
+        int count = InventoryScanner.countItems(player.getInventory(),
                 stack -> stack.has(DataComponents.FOOD));
+        // Also count food stored in endinv
+        if (cachedWorldState != null) {
+            for (var entry : cachedWorldState.endinvInventory.entrySet()) {
+                String id = entry.getKey();
+                // Check if this item is a known food via the registry
+                var item = net.minecraft.core.registries.BuiltInRegistries.ITEM
+                        .getValue(net.minecraft.resources.Identifier.parse(id));
+                if (item != null) {
+                    var stack = new net.minecraft.world.item.ItemStack(item);
+                    if (stack.has(DataComponents.FOOD)) {
+                        count += entry.getValue();
+                    }
+                }
+            }
+        }
+        return count;
     }
 }

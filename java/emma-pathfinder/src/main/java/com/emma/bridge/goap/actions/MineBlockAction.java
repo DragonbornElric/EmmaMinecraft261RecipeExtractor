@@ -1,5 +1,6 @@
 package com.emma.bridge.goap.actions;
 
+import com.emma.bridge.EmmaBridgeMod;
 import com.emma.bridge.catalogue.ItemRecipeEntry;
 import com.emma.bridge.catalogue.ItemRecipeRegistry;
 import com.emma.bridge.catalogue.ObtainMethod;
@@ -8,7 +9,10 @@ import com.emma.bridge.goap.GoalSet;
 import com.emma.bridge.goap.WorldState;
 import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.item.ItemStack;
 
 import java.util.*;
 
@@ -27,7 +31,12 @@ public class MineBlockAction extends GoapAction {
     private boolean mining = false;
     private String targetGoalId = null;
     private String targetBlock = null;
+    private String targetItemId = null;         // goal item ID (e.g., "minecraft:raw_iron")
     private BlockPos targetBlockPos = null;
+
+    /** Tool requirement tracking — set in execute(), checked in tick() to detect breakage. */
+    private String requiredToolSuffix = null;  // e.g., "_pickaxe"
+    private int requiredToolTierIndex = -1;    // index into TIER_ORDER (-1 = hand-mineable)
 
     /** Unreachable block tracking — captured from WorldState each scoring tick. */
     private Map<BlockPos, Long> unreachableBlocksRef = null;
@@ -40,7 +49,6 @@ public class MineBlockAction extends GoapAction {
 
     @Override
     public boolean checkPreconditions(WorldState state) {
-        // Need nearby blocks to mine -- populated by external block scanner
         return !state.nearbyBlocks.isEmpty();
     }
 
@@ -57,16 +65,28 @@ public class MineBlockAction extends GoapAction {
             if (goal.target == null || !goal.target.has("item")) continue;
 
             String itemId = goal.target.get("item").getAsString();
+            int goalCount = goal.target.has("count") ? goal.target.get("count").getAsInt() : 1;
+
+            // Skip if we already have enough
+            if (state.isGoalItemSatisfied(itemId, goalCount)) continue;
+
+            // Skip goals with an explicit non-MINE obtain method (e.g., CRAFT goals)
+            if (goal.target.has("obtain_method")) {
+                String method = goal.target.get("obtain_method").getAsString();
+                if (!method.equals("MINE")) continue;
+            }
+
             String[] blocks = itemToMineableBlocks(itemId, state.dimension);
             if (blocks == null) continue;
 
             // Skip items where we don't have the required tool tier
-            if (!hasRequiredTool(state, itemId)) continue;
+            if (!hasRequiredTool(state, itemId, new HashSet<>())) continue;
 
-            // Collect nearby positions from ALL mineable block types + tag equivalents
             List<BlockPos> positions = new ArrayList<>();
             for (String block : blocks) {
-                positions.addAll(TagGroups.findNearbyWithTagEquivalents(state, block));
+                String fullBlock = block.contains(":") ? block : "minecraft:" + block;
+                List<BlockPos> found = state.nearbyBlocks.get(fullBlock);
+                if (found != null) positions.addAll(found);
             }
             if (positions.isEmpty()) continue;
 
@@ -90,21 +110,11 @@ public class MineBlockAction extends GoapAction {
             if (score > bestScore) {
                 bestScore = score;
                 targetGoalId = goal.id;
+                targetItemId = itemId;
                 targetBlockPos = nearestPos;
-                // Pick the most abundant nearby variant across all mineable block types
-                String bestBlock = null;
-                int bestCount = 0;
-                for (String block : blocks) {
-                    String variant = TagGroups.findBestNearbyVariant(state, block);
-                    if (variant != null) {
-                        List<BlockPos> varPositions = TagGroups.findNearbyWithTagEquivalents(state, variant);
-                        if (varPositions.size() > bestCount) {
-                            bestCount = varPositions.size();
-                            bestBlock = variant;
-                        }
-                    }
-                }
-                targetBlock = bestBlock;
+                // Pick the nearest variant that has enough blocks to satisfy the goal
+                int needed = goal.target.has("count") ? goal.target.get("count").getAsInt() : 1;
+                targetBlock = pickBestVariant(state, blocks, needed);
             }
         }
 
@@ -114,6 +124,9 @@ public class MineBlockAction extends GoapAction {
     @Override
     public void execute(Minecraft client) {
         if (targetBlock == null) return;
+
+        // Record the tool requirement so tick() can detect breakage
+        recordToolRequirement(targetItemId);
 
         // Extract the block name (e.g., "minecraft:iron_ore" -> "iron_ore")
         String blockName = targetBlock.contains(":") ? targetBlock.split(":")[1] : targetBlock;
@@ -125,6 +138,19 @@ public class MineBlockAction extends GoapAction {
     @Override
     public void tick(Minecraft client) {
         if (!mining) return;
+
+        // Abort immediately if required tool broke
+        if (requiredToolSuffix != null) {
+            LocalPlayer player = client.player;
+            if (player != null && !playerHasToolInInventory(player)) {
+                EmmaBridgeMod.LOGGER.info("[GOAP MineBlock] Required tool broke (needed {}), aborting mine",
+                        requiredToolSuffix);
+                GoapNavHelper.cancelPathing();
+                GoapNavHelper.mineProcess().cancel();
+                mining = false;
+                return;
+            }
+        }
 
         // Check if Emmatone mine process is still active
         boolean active = GoapNavHelper.mineProcess().isActive();
@@ -148,7 +174,10 @@ public class MineBlockAction extends GoapAction {
         }
         targetGoalId = null;
         targetBlock = null;
+        targetItemId = null;
         targetBlockPos = null;
+        requiredToolSuffix = null;
+        requiredToolTierIndex = -1;
     }
 
     @Override
@@ -186,6 +215,62 @@ public class MineBlockAction extends GoapAction {
         bd.addProperty("target_goal", targetGoalId != null ? targetGoalId : "none");
         bd.addProperty("nearby_block_types", state.nearbyBlocks.size());
         return bd;
+    }
+
+    // -- Variant selection (proximity + sufficiency) ------------------------
+
+    /**
+     * Pick the best block variant to mine: prefer the nearest variant that has
+     * at least {@code needed} blocks nearby. If no single variant has enough,
+     * fall back to whichever variant has the closest individual block.
+     */
+    private static String pickBestVariant(WorldState state, String[] blocks, int needed) {
+        String bestVariant = null;
+        double bestAvgDist = Double.MAX_VALUE;
+        // Fallback: nearest single block of any variant
+        String fallbackVariant = null;
+        double fallbackDist = Double.MAX_VALUE;
+
+        for (String block : blocks) {
+            String fullBlock = block.contains(":") ? block : "minecraft:" + block;
+            List<String> variants = List.of(fullBlock);
+
+            for (String variant : variants) {
+                List<BlockPos> positions = state.nearbyBlocks.get(variant);
+                if (positions == null || positions.isEmpty()) continue;
+
+                // Sort positions by distance to player
+                List<Double> dists = new ArrayList<>();
+                for (BlockPos pos : positions) {
+                    double dx = pos.getX() - state.posX;
+                    double dy = pos.getY() - state.posY;
+                    double dz = pos.getZ() - state.posZ;
+                    dists.add(Math.sqrt(dx * dx + dy * dy + dz * dz));
+                }
+                Collections.sort(dists);
+
+                // Track fallback (nearest single block across all variants)
+                if (dists.get(0) < fallbackDist) {
+                    fallbackDist = dists.get(0);
+                    fallbackVariant = variant;
+                }
+
+                // Only consider this variant if it has >= needed blocks
+                if (positions.size() >= needed) {
+                    // Average distance of the nearest `needed` blocks
+                    double avg = 0;
+                    for (int i = 0; i < needed; i++) avg += dists.get(i);
+                    avg /= needed;
+
+                    if (avg < bestAvgDist) {
+                        bestAvgDist = avg;
+                        bestVariant = variant;
+                    }
+                }
+            }
+        }
+
+        return bestVariant != null ? bestVariant : fallbackVariant;
     }
 
     // -- Resource mappings (data-driven via ItemRecipeRegistry) ------------
@@ -258,12 +343,17 @@ public class MineBlockAction extends GoapAction {
     /**
      * Check if the player has a tool that meets the mining requirement for this item.
      * Returns true if no requirement (hand-mineable) or player has sufficient tool.
+     * Walks the dependency chain: if the item itself isn't mined but its deps are,
+     * checks tool requirements for those deps too (e.g., stone_pickaxe → cobblestone → WOOD pickaxe).
      */
-    private static boolean hasRequiredTool(WorldState state, String itemId) {
+    private static boolean hasRequiredTool(WorldState state, String itemId, Set<String> visited) {
         String id = itemId.contains(":") ? itemId.split(":")[1] : itemId;
+        if (!visited.add(id)) return true; // already checking — assume OK to break cycles
 
+        boolean hasMineEntry = false;
         for (ItemRecipeEntry entry : ItemRecipeRegistry.getEntries(id)) {
             if (entry.getObtainMethod() != ObtainMethod.MINE) continue;
+            hasMineEntry = true;
             String req = entry.getMiningRequirement();
             if (req == null) return true; // hand-mineable
 
@@ -285,7 +375,19 @@ public class MineBlockAction extends GoapAction {
             return hasToolTierOrBetter(state, "PICKAXE", req);
         }
 
-        return true; // no MINE entry found — don't block
+        // No MINE entries for this item — check dependencies.
+        // e.g., stone_pickaxe → cobblestone (MINE, requires WOOD pickaxe).
+        // If any mineable dep requires a tool we lack, block this goal.
+        if (!hasMineEntry) {
+            Set<String> deps = ItemRecipeRegistry.getDependencies(id);
+            for (String dep : deps) {
+                if (!hasRequiredTool(state, "minecraft:" + dep, visited)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -298,15 +400,80 @@ public class MineBlockAction extends GoapAction {
         int requiredIndex = TIER_ORDER.indexOf(requiredTier);
         if (requiredIndex < 0) return true; // unknown tier — don't block
 
-        for (String invItem : state.playerInventory.keySet()) {
+        // Check both player inventory and endinv
+        java.util.Set<String> allItems = new java.util.HashSet<>(state.playerInventory.keySet());
+        allItems.addAll(state.endinvInventory.keySet());
+        for (String invItem : allItems) {
             if (!invItem.endsWith(suffix)) continue;
-            // Extract tier from item name: "minecraft:iron_pickaxe" → "IRON"
             String cleanItem = invItem.contains(":") ? invItem.split(":")[1] : invItem;
             String tierPart = cleanItem.replace(suffix, "").toUpperCase();
-            // wooden_pickaxe → "WOODEN" but our tier is "WOOD"
             if (tierPart.equals("WOODEN")) tierPart = "WOOD";
             int itemIndex = TIER_ORDER.indexOf(tierPart);
             if (itemIndex >= requiredIndex) return true;
+        }
+        return false;
+    }
+
+    // -- Tool breakage detection -----------------------------------------------
+
+    /**
+     * Look up the tool requirement for the item we're about to mine and cache it
+     * so tick() can detect when the tool breaks.
+     */
+    private void recordToolRequirement(String itemId) {
+        requiredToolSuffix = null;
+        requiredToolTierIndex = -1;
+
+        if (itemId == null) return;
+        String id = itemId.contains(":") ? itemId.split(":")[1] : itemId;
+
+        for (ItemRecipeEntry entry : ItemRecipeRegistry.getEntries(id)) {
+            if (entry.getObtainMethod() != ObtainMethod.MINE) continue;
+
+            // Check per-block data first
+            ItemRecipeEntry.MineBlockInfo[] blocks = entry.getMineBlocks();
+            if (blocks != null && blocks.length > 0) {
+                ItemRecipeEntry.MineBlockInfo block = blocks[0];
+                String req = block.getRequirement();
+                if (req == null || req.equals("HAND")) return; // hand-mineable
+
+                String toolType = block.getToolType();
+                if (toolType == null) toolType = "PICKAXE";
+                String suffix = TOOL_SUFFIXES.get(toolType);
+                if (suffix == null) return;
+
+                requiredToolSuffix = suffix;
+                requiredToolTierIndex = TIER_ORDER.indexOf(req);
+                return;
+            }
+
+            // Fallback: top-level mining requirement
+            String req = entry.getMiningRequirement();
+            if (req == null || req.equals("HAND")) return;
+
+            String suffix = TOOL_SUFFIXES.get("PICKAXE");
+            requiredToolSuffix = suffix;
+            requiredToolTierIndex = TIER_ORDER.indexOf(req);
+            return;
+        }
+    }
+
+    /**
+     * Quick check: does the player's inventory (hotbar + main) contain a tool
+     * matching requiredToolSuffix at or above requiredToolTierIndex?
+     */
+    private boolean playerHasToolInInventory(LocalPlayer player) {
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+            ItemStack stack = player.getInventory().getItem(i);
+            if (stack.isEmpty()) continue;
+            String itemName = BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
+            if (!itemName.endsWith(requiredToolSuffix)) continue;
+
+            // Check tier
+            String tierPart = itemName.replace(requiredToolSuffix, "").toUpperCase();
+            if (tierPart.equals("WOODEN")) tierPart = "WOOD";
+            int tierIdx = TIER_ORDER.indexOf(tierPart);
+            if (tierIdx >= requiredToolTierIndex) return true;
         }
         return false;
     }

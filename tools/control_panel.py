@@ -99,6 +99,7 @@ class ControlPanel:
         self._build_tab_goals()
         self._build_tab_debug()
         self._build_tab_commands()
+        self._build_tab_builds()
 
     # ── Tab 1: Control + Live Status ──────────────────────────────
 
@@ -482,19 +483,6 @@ class ControlPanel:
 
         row = ttk.Frame(sec)
         row.pack(fill=tk.X, padx=5, pady=2)
-        ttk.Button(row, text="Overflow Status", command=lambda: self._run_cmd(
-            "overflow_status()", lambda: self.client.overflow_status())).pack(side=tk.LEFT, padx=2)
-        ttk.Button(row, text="Clear Junk", command=lambda: self._run_cmd(
-            "overflow_clear_junk()", lambda: self.client.overflow_clear_junk())).pack(side=tk.LEFT, padx=2)
-        ttk.Label(row, text="Free slots:").pack(side=tk.LEFT, padx=(10, 0))
-        e = ttk.Entry(row, width=4)
-        e.insert(0, "5")
-        e.pack(side=tk.LEFT, padx=1)
-        self._cmd_entries["free_target"] = e
-        ttk.Button(row, text="Free", command=lambda: self._cmd_free_slots()).pack(side=tk.LEFT, padx=2)
-
-        row = ttk.Frame(sec)
-        row.pack(fill=tk.X, padx=5, pady=2)
         ttk.Label(row, text="Storage Total:").pack(side=tk.LEFT)
         e = ttk.Entry(row, width=30)
         e.insert(0, "iron_ingot,diamond")
@@ -659,6 +647,426 @@ class ControlPanel:
         ttk.Button(row, text="Use Item", command=lambda: self._run_cmd(
             "use_item()", lambda: self.client.use_item())).pack(side=tk.LEFT, padx=2)
 
+    # ── Tab 6: Builds ────────────────────────────────────────────
+
+    def _build_tab_builds(self) -> None:
+        tab = ttk.Frame(self.notebook)
+        self.notebook.add(tab, text="Builds")
+
+        self._build_db_instance = None
+        self._guide_map: dict[str, int] = {}
+        self._builds_loaded = False
+        self._build_pipeline_thread: threading.Thread | None = None
+        self._build_pipeline_cancel = threading.Event()
+
+        # ── Guide Selection ──
+        sel_frame = ttk.LabelFrame(tab, text="Build Guide Selection")
+        sel_frame.pack(fill=tk.X, padx=5, pady=5)
+
+        row = ttk.Frame(sel_frame)
+        row.pack(fill=tk.X, padx=5, pady=4)
+        ttk.Label(row, text="Guide:").pack(side=tk.LEFT)
+        self._build_guide_var = tk.StringVar()
+        self._build_guide_combo = ttk.Combobox(
+            row, textvariable=self._build_guide_var, state="readonly", width=50)
+        self._build_guide_combo.pack(side=tk.LEFT, padx=4, fill=tk.X, expand=True)
+        self._build_guide_combo.bind("<<ComboboxSelected>>", self._on_build_guide_selected)
+        ttk.Button(row, text="Refresh", command=self._refresh_build_guides).pack(side=tk.LEFT, padx=2)
+
+        row2 = ttk.Frame(sel_frame)
+        row2.pack(fill=tk.X, padx=5, pady=2)
+        ttk.Button(row2, text="Import File...", command=self._builds_import_file).pack(side=tk.LEFT, padx=2)
+        ttk.Button(row2, text="Import Folder...", command=self._builds_import_folder).pack(side=tk.LEFT, padx=2)
+        self._builds_import_label = ttk.Label(row2, text="")
+        self._builds_import_label.pack(side=tk.LEFT, padx=10)
+
+        # ── Guide Info ──
+        info_frame = ttk.LabelFrame(tab, text="Guide Details")
+        info_frame.pack(fill=tk.X, padx=5, pady=2)
+
+        info_grid = ttk.Frame(info_frame)
+        info_grid.pack(fill=tk.X, padx=5, pady=4)
+
+        self._guide_info_vars = {}
+        for i, (label_text, key) in enumerate([
+            ("Name:", "name"), ("Blocks:", "block_count"),
+            ("Size:", "dimensions"), ("Difficulty:", "difficulty"),
+            ("Tags:", "tags"), ("Source:", "source"),
+        ]):
+            r, c = divmod(i, 2)
+            ttk.Label(info_grid, text=label_text, font=("Consolas", 9, "bold")).grid(
+                row=r, column=c * 2, sticky=tk.W, padx=(0, 4))
+            var = tk.StringVar(value="—")
+            self._guide_info_vars[key] = var
+            ttk.Label(info_grid, textvariable=var, font=("Consolas", 9)).grid(
+                row=r, column=c * 2 + 1, sticky=tk.W, padx=(0, 20))
+
+        # ── Build Actions ──
+        act_frame = ttk.LabelFrame(tab, text="Build Actions")
+        act_frame.pack(fill=tk.X, padx=5, pady=2)
+
+        loc_row = ttk.Frame(act_frame)
+        loc_row.pack(fill=tk.X, padx=5, pady=4)
+        ttk.Label(loc_row, text="Location:").pack(side=tk.LEFT)
+        self._build_entries: dict[str, ttk.Entry] = {}
+        for label in ("build_x", "build_y", "build_z"):
+            e = ttk.Entry(loc_row, width=7)
+            e.insert(0, "0")
+            e.pack(side=tk.LEFT, padx=1)
+            self._build_entries[label] = e
+        ttk.Button(loc_row, text="Use Current Pos", command=self._builds_use_current_pos).pack(
+            side=tk.LEFT, padx=6)
+
+        btn_row = ttk.Frame(act_frame)
+        btn_row.pack(fill=tk.X, padx=5, pady=2)
+        ttk.Button(btn_row, text="Create Goal", command=self._builds_create_goal).pack(
+            side=tk.LEFT, padx=2)
+        ttk.Button(btn_row, text="View BOM", command=self._builds_view_bom).pack(
+            side=tk.LEFT, padx=2)
+        ttk.Separator(btn_row, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=6, fill=tk.Y)
+        self._start_build_btn = ttk.Button(btn_row, text="Start Build", command=self._builds_start_pipeline)
+        self._start_build_btn.pack(side=tk.LEFT, padx=2)
+        self._stop_build_btn = ttk.Button(btn_row, text="Stop Build", command=self._builds_stop_pipeline,
+                                           state=tk.DISABLED)
+        self._stop_build_btn.pack(side=tk.LEFT, padx=2)
+
+        # ── Active Goals ──
+        goals_frame = ttk.LabelFrame(tab, text="Active Build Goals")
+        goals_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=2)
+
+        cols = ("id", "name", "status", "location", "progress")
+        self._build_goals_tree = ttk.Treeview(goals_frame, columns=cols, show="headings", height=6)
+        for col, text, w in [("id", "ID", 40), ("name", "Name", 200), ("status", "Status", 80),
+                              ("location", "Location", 140), ("progress", "Progress", 80)]:
+            self._build_goals_tree.heading(col, text=text)
+            self._build_goals_tree.column(col, width=w, anchor=tk.W if col in ("name", "location") else tk.CENTER)
+
+        goals_scroll = ttk.Scrollbar(goals_frame, orient=tk.VERTICAL, command=self._build_goals_tree.yview)
+        self._build_goals_tree.configure(yscrollcommand=goals_scroll.set)
+        self._build_goals_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0), pady=2)
+        goals_scroll.pack(side=tk.RIGHT, fill=tk.Y, padx=(0, 5), pady=2)
+
+        # ── Output ──
+        out_frame = ttk.LabelFrame(tab, text="Output")
+        out_frame.pack(fill=tk.X, padx=5, pady=2)
+        self._builds_output = tk.Text(out_frame, height=6, wrap=tk.WORD, font=("Consolas", 9),
+                                       state=tk.DISABLED, bg="#1e1e1e", fg="#d4d4d4")
+        self._builds_output.pack(fill=tk.X, padx=2, pady=2)
+
+        # Auto-load guides on first tab visit
+        self.notebook.bind("<<NotebookTabChanged>>", self._on_notebook_tab_changed, add="+")
+
+    def _on_notebook_tab_changed(self, event) -> None:
+        """Lazy-load build guides when Builds tab is first visited."""
+        if self._builds_loaded:
+            return
+        current = self.notebook.index(self.notebook.select())
+        # Builds tab is the last one (index 5)
+        if current == self.notebook.index("end") - 1:
+            self._builds_loaded = True
+            self._refresh_build_guides()
+
+    def _get_build_db(self):
+        """Lazy import and return a BuildDB instance."""
+        if self._build_db_instance is None:
+            try:
+                from gamer.db import init_db
+                init_db()
+            except Exception:
+                pass
+            from gamer.build_db import BuildDB
+            self._build_db_instance = BuildDB()
+        return self._build_db_instance
+
+    def _refresh_build_guides(self) -> None:
+        """Reload the guide dropdown from the build database."""
+        try:
+            db = self._get_build_db()
+            guides = db.search_guides("")
+            self._guide_map = {}
+            values = []
+            for g in guides:
+                dims = g.get("dimensions") or {}
+                dim_str = f"{dims.get('x', '?')}x{dims.get('y', '?')}x{dims.get('z', '?')}" if dims else "?"
+                label = f"{g['name']} ({g['block_count']} blocks, {dim_str}, diff {g.get('difficulty', '?')})"
+                values.append(label)
+                self._guide_map[label] = g["id"]
+            self._build_guide_combo["values"] = values
+            if values:
+                self._build_guide_combo.current(0)
+                self._on_build_guide_selected()
+            self._builds_append(f"Loaded {len(values)} build guides from database")
+        except Exception as e:
+            self._builds_append(f"ERROR loading guides: {e}")
+
+    def _on_build_guide_selected(self, event=None) -> None:
+        """Update guide info labels when a guide is selected."""
+        label = self._build_guide_var.get()
+        guide_id = self._guide_map.get(label)
+        if not guide_id:
+            return
+        try:
+            db = self._get_build_db()
+            g = db.get_guide(guide_id)
+            if not g:
+                return
+            self._guide_info_vars["name"].set(g.get("name", "?"))
+            self._guide_info_vars["block_count"].set(str(g.get("block_count", "?")))
+            dims = g.get("dimensions") or {}
+            self._guide_info_vars["dimensions"].set(
+                f"{dims.get('x', '?')} x {dims.get('y', '?')} x {dims.get('z', '?')}" if dims else "?")
+            self._guide_info_vars["difficulty"].set(str(g.get("difficulty", "?")))
+            tags = g.get("tags", [])
+            self._guide_info_vars["tags"].set(", ".join(tags) if isinstance(tags, list) else str(tags))
+            self._guide_info_vars["source"].set(g.get("source", "?"))
+        except Exception as e:
+            self._builds_append(f"ERROR loading guide details: {e}")
+
+    def _builds_import_file(self) -> None:
+        """Import a single schematic file."""
+        from tkinter import filedialog
+        path = filedialog.askopenfilename(
+            title="Import Schematic",
+            filetypes=[
+                ("All Schematics", "*.nbt *.litematic *.schem *.schematic"),
+                ("NBT Structure", "*.nbt"),
+                ("Litematica", "*.litematic"),
+                ("Sponge Schematic", "*.schem"),
+                ("Legacy Schematic", "*.schematic"),
+            ])
+        if not path:
+            return
+
+        self._builds_import_label.config(text="Importing...")
+
+        def worker():
+            try:
+                from gamer.schematic_parser import import_schematic_to_db
+                db = self._get_build_db()
+                guide_id = import_schematic_to_db(path, db)
+                name = os.path.basename(path)
+                if guide_id == -1:
+                    msg = f"Skipped (duplicate): {name}"
+                else:
+                    msg = f"Imported: {name} (guide #{guide_id})"
+                self.root.after(0, lambda: self._builds_import_label.config(text=msg))
+                self.root.after(0, lambda: self._builds_append(msg))
+                self.root.after(200, self._refresh_build_guides)
+            except Exception as e:
+                self.root.after(0, lambda: self._builds_import_label.config(text=f"Error: {e}"))
+                self.root.after(0, lambda: self._builds_append(f"Import error: {e}"))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _builds_import_folder(self) -> None:
+        """Batch import all schematics from a folder."""
+        from tkinter import filedialog
+        directory = filedialog.askdirectory(title="Select Schematic Folder")
+        if not directory:
+            return
+
+        self._builds_import_label.config(text="Batch importing...")
+
+        def worker():
+            try:
+                from gamer.schematic_parser import batch_import
+                db = self._get_build_db()
+                result = batch_import(directory, db)
+                msg = (f"Batch: {result['imported']} imported, "
+                       f"{result['skipped']} skipped, "
+                       f"{len(result['errors'])} errors")
+                self.root.after(0, lambda: self._builds_import_label.config(text=msg))
+                self.root.after(0, lambda: self._builds_append(msg))
+                for err in result.get("errors", []):
+                    self.root.after(0, lambda e=err: self._builds_append(
+                        f"  ERROR: {e['file']}: {e['error']}"))
+                self.root.after(200, self._refresh_build_guides)
+            except Exception as e:
+                self.root.after(0, lambda: self._builds_import_label.config(text=f"Error: {e}"))
+                self.root.after(0, lambda: self._builds_append(f"Batch import error: {e}"))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _builds_use_current_pos(self) -> None:
+        """Fill location fields from player's current position."""
+        if not self._ensure_connected():
+            return
+
+        def worker():
+            try:
+                result = self.client.get_position()
+                data = result if isinstance(result, dict) else result.get("data", result)
+                x = int(data.get("x", 0))
+                y = int(data.get("y", 0))
+                z = int(data.get("z", 0))
+
+                def update():
+                    for key, val in [("build_x", x), ("build_y", y), ("build_z", z)]:
+                        self._build_entries[key].delete(0, tk.END)
+                        self._build_entries[key].insert(0, str(val))
+                    self._builds_append(f"Position set to ({x}, {y}, {z})")
+
+                self.root.after(0, update)
+            except Exception as e:
+                self.root.after(0, lambda: self._builds_append(f"Failed to get position: {e}"))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _builds_create_goal(self) -> None:
+        """Create a build goal from the selected guide."""
+        label = self._build_guide_var.get()
+        guide_id = self._guide_map.get(label)
+        if not guide_id:
+            self._builds_append("No guide selected")
+            return
+
+        try:
+            x = int(self._build_entries["build_x"].get())
+            y = int(self._build_entries["build_y"].get())
+            z = int(self._build_entries["build_z"].get())
+        except ValueError:
+            self._builds_append("Invalid coordinates")
+            return
+
+        try:
+            db = self._get_build_db()
+            guide = db.get_guide(guide_id)
+            name = guide["name"] if guide else f"Guide #{guide_id}"
+            goal_id = db.create_goal(
+                name=f"Build: {name}",
+                guide_id=guide_id,
+                status="planned",
+                location_x=x, location_y=y, location_z=z,
+            )
+            db.init_progress_from_guide(goal_id, guide_id)
+            self._builds_append(f"Created goal #{goal_id} for '{name}' at ({x}, {y}, {z})")
+            self._refresh_build_goals()
+        except Exception as e:
+            self._builds_append(f"Goal creation failed: {e}")
+
+    def _builds_view_bom(self) -> None:
+        """Display bill of materials for the selected guide."""
+        label = self._build_guide_var.get()
+        guide_id = self._guide_map.get(label)
+        if not guide_id:
+            self._builds_append("No guide selected")
+            return
+
+        try:
+            db = self._get_build_db()
+            bom = db.get_guide_bill_of_materials(guide_id)
+            if not bom:
+                self._builds_append("No blocks in this guide")
+                return
+            lines = ["Bill of Materials:"]
+            for block_type, qty in sorted(bom.items(), key=lambda x: -x[1]):
+                lines.append(f"  {qty:>5}x  {block_type}")
+            lines.append(f"\n  Total: {sum(bom.values())} blocks, {len(bom)} types")
+            self._builds_append("\n".join(lines))
+        except Exception as e:
+            self._builds_append(f"BOM error: {e}")
+
+    def _refresh_build_goals(self) -> None:
+        """Refresh the active goals treeview."""
+        try:
+            db = self._get_build_db()
+            goals = db.get_active_goals()
+            self._build_goals_tree.delete(*self._build_goals_tree.get_children())
+            for g in goals:
+                loc = f"({g.get('location_x', '?')}, {g.get('location_y', '?')}, {g.get('location_z', '?')})"
+                progress = "—"
+                self._build_goals_tree.insert("", tk.END, values=(
+                    g["id"], g.get("name", "?"), g.get("status", "?"), loc, progress))
+        except Exception as e:
+            self._builds_append(f"Goals refresh error: {e}")
+
+    def _builds_append(self, text: str) -> None:
+        """Append text to the builds output panel."""
+        self._builds_output.config(state=tk.NORMAL)
+        self._builds_output.insert(tk.END, text + "\n\n")
+        self._builds_output.see(tk.END)
+        self._builds_output.config(state=tk.DISABLED)
+
+    def _builds_start_pipeline(self) -> None:
+        """Launch build_pipeline in a background thread for the selected active goal."""
+        if self._build_pipeline_thread and self._build_pipeline_thread.is_alive():
+            self._builds_append("Pipeline already running.")
+            return
+        if not self._ensure_connected():
+            return
+
+        # Get selected goal from treeview
+        sel = self._build_goals_tree.selection()
+        if not sel:
+            self._builds_append("Select an active build goal first.")
+            return
+
+        item = self._build_goals_tree.item(sel[0])
+        goal_id = int(item["values"][0])
+        goal_name = item["values"][1]
+
+        self._build_pipeline_cancel.clear()
+        self._start_build_btn.config(state=tk.DISABLED)
+        self._stop_build_btn.config(state=tk.NORMAL)
+        self._builds_append(f"Starting pipeline for goal #{goal_id} ({goal_name})...")
+
+        def _pipeline_callback(msg: str):
+            self.root.after(0, lambda: self._builds_append(msg))
+
+        def _run():
+            from gamer.build_tools import build_pipeline
+            try:
+                result = build_pipeline(
+                    self.client, goal_id,
+                    callback=_pipeline_callback,
+                    cancel_event=self._build_pipeline_cancel,
+                )
+                self.root.after(0, lambda: self._builds_append(
+                    f"Pipeline finished: {result.get('status')} — "
+                    f"{result.get('phases_completed', 0)} phases, "
+                    f"{result.get('total_placed', 0)} blocks"))
+            except Exception as e:
+                self.root.after(0, lambda: self._builds_append(f"Pipeline error: {e}"))
+            finally:
+                self.root.after(0, self._builds_pipeline_finished)
+
+        self._build_pipeline_thread = threading.Thread(target=_run, daemon=True)
+        self._build_pipeline_thread.start()
+
+    def _builds_stop_pipeline(self) -> None:
+        """Cancel the running build pipeline."""
+        self._build_pipeline_cancel.set()
+        self._builds_append("Cancelling pipeline...")
+
+        # Also immediately clear build mode and cancel any active build
+        if self.client and self.client.connected:
+            try:
+                self.client.set_mode("stop")
+            except Exception:
+                pass
+            try:
+                self.client.cancel()
+            except Exception:
+                pass
+
+            # Remove any leftover gather goals
+            try:
+                debug = self.client.goap_debug()
+                goals = debug.get("goals", [])
+                for g in goals:
+                    gid = g.get("id", "")
+                    if gid.startswith("build_gather_"):
+                        self.client.remove_goal(gid)
+            except Exception:
+                pass
+
+    def _builds_pipeline_finished(self) -> None:
+        """Reset button states after pipeline completes."""
+        self._start_build_btn.config(state=tk.NORMAL)
+        self._stop_build_btn.config(state=tk.DISABLED)
+        self._build_pipeline_thread = None
+        self._refresh_build_goals()
+
     # ── Command helpers ────────────────────────────────────────────
 
     def _run_cmd(self, label: str, fn) -> None:
@@ -810,14 +1218,6 @@ class ControlPanel:
         except ValueError:
             r = 32
         self._run_cmd(f"storage_scan(radius={r})", lambda: self.client.storage_scan(radius=r))
-
-    def _cmd_free_slots(self) -> None:
-        try:
-            target = int(self._cmd_entries["free_target"].get())
-        except ValueError:
-            target = 5
-        self._run_cmd(f"overflow_free_slots(target={target})",
-                      lambda: self.client.overflow_free_slots(target=target))
 
     def _cmd_storage_total(self) -> None:
         items_str = self._cmd_entries["storage_items"].get().strip()

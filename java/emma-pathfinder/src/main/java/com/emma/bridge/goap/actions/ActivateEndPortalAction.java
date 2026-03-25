@@ -63,7 +63,7 @@ public class ActivateEndPortalAction extends GoapAction {
     @Override
     public boolean checkPreconditions(WorldState state) {
         return state.strongholdKnown
-                && state.hasItemInInventory("minecraft:ender_eye", 1)
+                && state.hasItem("minecraft:ender_eye", 1)
                 && state.dimension.contains("overworld");
     }
 

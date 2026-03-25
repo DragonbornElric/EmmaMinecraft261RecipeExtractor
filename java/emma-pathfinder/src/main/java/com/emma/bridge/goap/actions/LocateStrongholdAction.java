@@ -62,7 +62,7 @@ public class LocateStrongholdAction extends GoapAction {
 
     @Override
     public boolean checkPreconditions(WorldState state) {
-        return state.hasItemInInventory("minecraft:ender_eye", 2)
+        return state.hasItem("minecraft:ender_eye", 2)
                 && state.dimension.contains("overworld")
                 && !state.strongholdKnown;
     }

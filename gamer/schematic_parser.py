@@ -304,12 +304,86 @@ def _decode_varints(data, expected_count: int) -> list[int]:
     return result
 
 
+# ── .nbt (Vanilla Structure) ─────────────────────────────────
+
+def parse_nbt_structure(filepath: str) -> dict:
+    """Read .nbt vanilla structure format (Structure Block / data packs).
+    Returns {name, dimensions, blocks: [{block_type, block_state, offset_x/y/z}]}
+    """
+    try:
+        import nbtlib
+    except ImportError:
+        raise ImportError("nbtlib is required: pip install nbtlib")
+
+    nbt = nbtlib.load(filepath)
+
+    # Size: list of 3 ints [x, y, z]
+    size = nbt.get("size", [0, 0, 0])
+    width = int(size[0])
+    height = int(size[1])
+    length = int(size[2])
+
+    # Palette: list of {Name: str, Properties?: {str: str}}
+    # Some files use "palettes" (plural, list of palette lists) for randomized structures
+    palette_raw = nbt.get("palette")
+    if palette_raw is None:
+        palettes = nbt.get("palettes")
+        if palettes and len(palettes) > 0:
+            palette_raw = palettes[0]
+        else:
+            palette_raw = []
+
+    parsed_palette = []
+    for entry in palette_raw:
+        block_name = normalize_block_name(str(entry.get("Name", "minecraft:air")))
+        block_state = {}
+        props = entry.get("Properties", {})
+        for k, v in props.items():
+            block_state[str(k)] = str(v)
+        parsed_palette.append((block_name, block_state))
+
+    # Blocks: list of {pos: [x, y, z], state: int, nbt?: compound}
+    raw_blocks = nbt.get("blocks", [])
+    blocks = []
+    for b in raw_blocks:
+        state_idx = int(b.get("state", 0))
+        if state_idx >= len(parsed_palette):
+            log.warning("Block state index %d out of palette range (%d) in %s",
+                        state_idx, len(parsed_palette), filepath)
+            continue
+        block_name, block_state = parsed_palette[state_idx]
+        if block_name == "minecraft:air":
+            continue
+
+        pos = b.get("pos", [0, 0, 0])
+        blocks.append({
+            "block_type": block_name,
+            "block_state": block_state,
+            "offset_x": int(pos[0]),
+            "offset_y": int(pos[1]),
+            "offset_z": int(pos[2]),
+        })
+
+    blocks = _compute_placement_order(blocks)
+    for i, blk in enumerate(blocks):
+        blk["placement_order"] = i
+
+    name = Path(filepath).stem
+    return {
+        "name": name,
+        "dimensions": {"x": width, "y": height, "z": length},
+        "blocks": blocks,
+        "source_format": "nbt",
+    }
+
+
 # ── Auto-detect and Import ────────────────────────────────────
 
 FORMAT_PARSERS = {
     ".schematic": parse_schematic,
     ".litematic": parse_litematic,
     ".schem": parse_schem,
+    ".nbt": parse_nbt_structure,
 }
 
 
@@ -323,11 +397,16 @@ def import_schematic_to_db(filepath: str, db: BuildDB = None) -> int:
     if parser is None:
         raise ValueError(f"Unsupported schematic format: {ext}")
 
+    # Fast duplicate check by filename before expensive parse
+    source = Path(filepath).name
+    if db.guide_exists_by_source(source):
+        log.info(f"Skipping existing: {source}")
+        return -1
+
     result = parser(filepath)
 
-    # Check for duplicates
+    # Full duplicate check (same source + dimensions)
     dims = result["dimensions"]
-    source = Path(filepath).name
     if db.guide_exists(source, dims):
         log.info(f"Skipping duplicate: {source}")
         return -1
@@ -359,21 +438,29 @@ def batch_import(directory: str, db: BuildDB = None) -> dict:
     skipped = 0
     errors = []
 
+    # Collect all schematic files first for progress reporting
+    all_files = []
     for root, dirs, files in os.walk(directory):
         for fname in sorted(files):
             ext = Path(fname).suffix.lower()
-            if ext not in FORMAT_PARSERS:
-                continue
-            fpath = os.path.join(root, fname)
-            try:
-                guide_id = import_schematic_to_db(fpath, db)
-                if guide_id == -1:
-                    skipped += 1
-                else:
-                    imported += 1
-            except Exception as e:
-                errors.append({"file": fname, "error": str(e)})
-                log.error(f"Failed to import {fname}: {e}")
+            if ext in FORMAT_PARSERS:
+                all_files.append((root, fname))
+
+    total = len(all_files)
+    for i, (root, fname) in enumerate(all_files, 1):
+        fpath = os.path.join(root, fname)
+        try:
+            guide_id = import_schematic_to_db(fpath, db)
+            if guide_id == -1:
+                skipped += 1
+                print(f"  [{i}/{total}] {fname} — skipped")
+            else:
+                imported += 1
+                print(f"  [{i}/{total}] {fname} — imported (id={guide_id})")
+        except Exception as e:
+            errors.append({"file": fname, "error": str(e)})
+            print(f"  [{i}/{total}] {fname} — ERROR: {e}")
+            log.error(f"Failed to import {fname}: {e}")
 
     return {"imported": imported, "skipped": skipped, "errors": errors}
 

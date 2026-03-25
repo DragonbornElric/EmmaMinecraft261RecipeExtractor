@@ -73,11 +73,14 @@ public class HuntHostileAction extends GoapAction {
     @Override
     public boolean checkPreconditions(WorldState state) {
         if (GoapStateFlags.get().isEating) return false;
-        return true;  // scoring determines viability via goal matching
+        return true;
     }
 
     @Override
     public float computeScore(WorldState state, GoalSet goals) {
+        // Reset stale goal tracking — prevents collateral from prior ticks
+        targetGoalId = null;
+
         // Only score if a hunt_hostile goal exists
         float goalPriority = 0;
         String bestGoalId = null;
@@ -91,6 +94,23 @@ public class HuntHostileAction extends GoapAction {
         }
 
         if (goalPriority == 0) return 0;
+
+        // Survival gate: don't hunt when hungry
+        if (state.hunger < 8) {
+            targetGoalId = bestGoalId;
+            return goalPriority * 0.02f;
+        }
+
+        // Equipment gate: ALL have_item goals must be satisfied (has item or better equipped)
+        for (GoalSet.Goal g : goals.getGoals()) {
+            if (g.target == null || !g.target.has("item")) continue;
+            String item = g.target.get("item").getAsString();
+            int count = g.target.has("count") ? g.target.get("count").getAsInt() : 1;
+            if (!state.isGoalItemSatisfied(item, count)) {
+                targetGoalId = bestGoalId;
+                return goalPriority * 0.02f;
+            }
+        }
 
         Minecraft client = Minecraft.getInstance();
         if (client.player == null) return 0;

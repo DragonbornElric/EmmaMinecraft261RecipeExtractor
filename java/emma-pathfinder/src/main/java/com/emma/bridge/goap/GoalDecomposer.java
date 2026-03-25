@@ -44,6 +44,10 @@ public class GoalDecomposer {
     /** Obtain methods that require a specific container/workstation. */
     private static final Map<ObtainMethod, String> CONTAINER_FOR_METHOD = Map.of(
             ObtainMethod.SMELT, "furnace",
+            ObtainMethod.SMELT_FURNACE, "furnace",
+            ObtainMethod.SMELT_BLAST, "furnace",
+            ObtainMethod.SMELT_SMOKER, "furnace",
+            ObtainMethod.SMELT_CAMPFIRE, "furnace",
             ObtainMethod.CRAFT_SHAPED_3x3, "crafting_table",
             ObtainMethod.STONECUTTER, "stonecutter",
             ObtainMethod.SMITH, "smithing_table",
@@ -155,17 +159,28 @@ public class GoalDecomposer {
                 continue;
             }
 
+            // Build structure goals → have_item subgoals for each material
+            if ("build_structure".equals(goal.type)) {
+                decomposeBuildStructure(goal, state, derived, seen);
+                continue;
+            }
+
             if (goal.target == null || !goal.target.has("item")) continue;
 
             String goalItem = goal.target.get("item").getAsString();
             String goalId = stripNamespace(goalItem);
             int goalCount = goal.target.has("count") ? goal.target.get("count").getAsInt() : 1;
 
-            // Skip if we already have the item
-            if (state.hasItem(goalItem, goalCount)) continue;
+            // Skip if we already have the item (or better equipped)
+            if (state.isGoalItemSatisfied(goalItem, goalCount)) {
+                EmmaBridgeMod.LOGGER.debug("[GoalDecomposer] Skipping {} — already satisfied", goalId);
+                continue;
+            }
 
             // Walk full dependency chain
+            int before = derived.size();
             decomposeItem(goalId, goal.id, goal.priority, state, derived, seen);
+            EmmaBridgeMod.LOGGER.debug("[GoalDecomposer] {} → {} subgoals", goalId, derived.size() - before);
         }
 
         if (!derived.isEmpty()) {
@@ -185,14 +200,30 @@ public class GoalDecomposer {
     private void decomposeItem(String itemId, String parentGoalId, float parentPriority,
                                 WorldState state, List<GoalSet.Goal> derived, Set<String> seen) {
 
-        List<String> deps = ItemRecipeRegistry.getTransitiveDependencies(itemId);
+        // Resolve deps with state awareness: for each craft slot with alternatives
+        // (e.g., [oak_planks, spruce_planks, ...]), picks the one we already have
+        // OR can derive from owned items (e.g., have oak_wood → oak_planks is derivable).
+        // This naturally prunes the tree — no need for tag group hacks.
+        List<String> deps = ItemRecipeRegistry.getResolvedDependencies(itemId,
+                fullId -> state.hasItem(fullId, 1) || canDeriveFromOwned(fullId, state));
+
+        // Compute per-dep recipe counts so we skip only when we have ENOUGH
+        Map<String, Integer> depCounts = computeDepCounts(itemId, state);
 
         for (String dep : deps) {
             String fullDep = dep.contains(":") ? dep : "minecraft:" + dep;
             String cleanDep = stripNamespace(fullDep);
 
-            // Skip if already have it
-            if (state.hasItemInInventory(fullDep, 1)) continue;
+            // Skip if we have enough for the recipe (not just 1)
+            int needed = depCounts.getOrDefault(cleanDep, 1);
+            if (state.hasItem(fullDep, needed)) {
+                EmmaBridgeMod.LOGGER.debug("[GoalDecomposer] Skipping dep {} — have enough ({} needed, inv={}, endinv={}, storage={})",
+                        cleanDep, needed,
+                        state.playerInventory.getOrDefault(fullDep, 0),
+                        state.endinvInventory.getOrDefault(fullDep, 0),
+                        state.knownStorage.getOrDefault(fullDep, 0));
+                continue;
+            }
 
             List<ItemRecipeEntry> entries = ItemRecipeRegistry.getEntries(cleanDep);
             if (entries.isEmpty()) continue;
@@ -212,6 +243,7 @@ public class GoalDecomposer {
             Set<ObtainMethod> methodsSeen = EnumSet.noneOf(ObtainMethod.class);
             for (ItemRecipeEntry entry : entries) {
                 ObtainMethod method = entry.getObtainMethod();
+                if (method.isMetadataOnly()) continue;  // skip ITEM_PROPERTIES, etc.
                 if (methodsSeen.contains(method)) continue;
                 methodsSeen.add(method);
 
@@ -237,6 +269,76 @@ public class GoalDecomposer {
                 derived.add(new GoalSet.Goal(goalId, subType, subPriority, target, parentGoalId));
             }
         }
+    }
+
+    /**
+     * Compute per-ingredient required counts from the item's craft recipes.
+     * Resolves slot alternatives the same way as getResolvedDepsForEntry:
+     * picks the first alternative the player has, otherwise uses slotAlts[0].
+     * Returns a map from bare item ID → count needed in the recipe.
+     */
+    private Map<String, Integer> computeDepCounts(String itemId, WorldState state) {
+        Map<String, Integer> counts = new HashMap<>();
+        List<ItemRecipeEntry> entries = ItemRecipeRegistry.getEntries(itemId);
+        for (ItemRecipeEntry entry : entries) {
+            if (!entry.getObtainMethod().isCraftType()) continue;
+            String[][] grid = entry.getCraftGrid();
+            if (grid == null) continue;
+
+            Map<String, Integer> gridCounts = new HashMap<>();
+            for (String[] slotAlts : grid) {
+                if (slotAlts == null || slotAlts.length == 0) continue;
+                String best = null;
+                for (String alt : slotAlts) {
+                    String full = alt.contains(":") ? alt : "minecraft:" + alt;
+                    if (state.hasItem(full, 1) || canDeriveFromOwned(full, state)) {
+                        best = alt;
+                        break;
+                    }
+                }
+                if (best == null) best = slotAlts[0];
+                String cleanBest = stripNamespace(best.contains(":") ? best : "minecraft:" + best);
+                gridCounts.merge(cleanBest, 1, Integer::sum);
+            }
+
+            for (var e : gridCounts.entrySet()) {
+                counts.merge(e.getKey(), e.getValue(), Math::max);
+            }
+        }
+        return counts;
+    }
+
+    /**
+     * Check if an item can be derived (one craft step) from items we already own.
+     * Used to collapse tag-equivalent alternatives: e.g., if we have oak_wood,
+     * oak_planks is "derivable" → the planks slot collapses to just oak_planks
+     * instead of keeping all 12 wood variants.
+     *
+     * Only checks one level deep to avoid performance issues.
+     */
+    private boolean canDeriveFromOwned(String fullId, WorldState state) {
+        String id = fullId.contains(":") ? fullId.split(":")[1] : fullId;
+        List<ItemRecipeEntry> entries = ItemRecipeRegistry.getEntries(id);
+
+        for (ItemRecipeEntry entry : entries) {
+            if (!entry.getObtainMethod().isCraftType()) continue;
+
+            String[][] grid = entry.getCraftGrid();
+            if (grid == null) continue;
+
+            boolean hasAll = true;
+            for (String[] slotAlts : grid) {
+                if (slotAlts == null || slotAlts.length == 0) continue;
+                boolean hasAny = false;
+                for (String alt : slotAlts) {
+                    String full = alt.contains(":") ? alt : "minecraft:" + alt;
+                    if (state.hasItem(full, 1)) { hasAny = true; break; }
+                }
+                if (!hasAny) { hasAll = false; break; }
+            }
+            if (hasAll) return true;
+        }
+        return false;
     }
 
     /**
@@ -274,7 +376,7 @@ public class GoalDecomposer {
                             boolean hasAny = false;
                             for (String alt : slotAlts) {
                                 String full = alt.contains(":") ? alt : "minecraft:" + alt;
-                                if (state.hasItemInInventory(full, 1)) { hasAny = true; break; }
+                                if (state.hasItem(full, 1)) { hasAny = true; break; }
                             }
                             if (!hasAny) { hasAll = false; break; }
                         }
@@ -282,12 +384,12 @@ public class GoalDecomposer {
                     if (hasAll) boost = 0.4f;
                 }
             }
-            case SMELT -> {
+            case SMELT, SMELT_FURNACE, SMELT_BLAST, SMELT_SMOKER, SMELT_CAMPFIRE -> {
                 // Boost if any smelt input is in inventory AND furnace is accessible
                 if (entry.getSmeltFrom() != null) {
                     for (String input : entry.getSmeltFrom()) {
                         String full = input.contains(":") ? input : "minecraft:" + input;
-                        if (state.hasItemInInventory(full, 1) && hasContainerAccess(state, "furnace")) {
+                        if (state.hasItem(full, 1) && hasContainerAccess(state, "furnace")) {
                             boost = 0.2f;
                             break;
                         }
@@ -299,7 +401,7 @@ public class GoalDecomposer {
                 if (entry.getSmeltFrom() != null) {
                     for (String input : entry.getSmeltFrom()) {
                         String full = input.contains(":") ? input : "minecraft:" + input;
-                        if (state.hasItemInInventory(full, 1) && hasContainerAccess(state, "stonecutter")) {
+                        if (state.hasItem(full, 1) && hasContainerAccess(state, "stonecutter")) {
                             boost = 0.1f;
                             break;
                         }
@@ -367,20 +469,44 @@ public class GoalDecomposer {
 
                 if (toolItem != null) {
                     String fullTool = "minecraft:" + toolItem;
-                    if (!state.hasItemInInventory(fullTool, 1) && !seen.contains(toolItem)) {
-                        seen.add(toolItem);
-                        JsonObject toolTarget = new JsonObject();
-                        toolTarget.addProperty("item", fullTool);
-                        toolTarget.addProperty("count", 1);
-                        toolTarget.addProperty("is_tool_prereq", true);
+                    if (!state.hasItem(fullTool, 1) && !seen.contains("tool_" + toolItem)) {
+                        seen.add("tool_" + toolItem);
 
-                        derived.add(new GoalSet.Goal(
-                                "derived_tool_" + toolItem,
-                                "have_item",
-                                subPriority,
-                                toolTarget,
-                                parentGoalId
-                        ));
+                        // Create per-method goals for the tool (with obtain_method)
+                        // so CraftItemAction can discover and craft it
+                        List<ItemRecipeEntry> toolEntries = ItemRecipeRegistry.getEntries(toolItem);
+                        long distinctToolMethods = toolEntries.stream()
+                                .map(ItemRecipeEntry::getObtainMethod)
+                                .filter(m -> !m.isMetadataOnly()).distinct().count();
+
+                        Set<ObtainMethod> toolMethodsSeen = EnumSet.noneOf(ObtainMethod.class);
+                        for (ItemRecipeEntry toolEntry : toolEntries) {
+                            ObtainMethod m = toolEntry.getObtainMethod();
+                            if (m.isMetadataOnly() || toolMethodsSeen.contains(m)) continue;
+                            toolMethodsSeen.add(m);
+
+                            String toolGoalId = "derived_" + toolItem;
+                            if (distinctToolMethods > 1) {
+                                toolGoalId += "_" + m.name().toLowerCase();
+                            }
+                            if (seen.contains(toolGoalId)) continue;
+                            seen.add(toolGoalId);
+
+                            float toolPriority = subPriority
+                                    + computeFeasibilityBoost(state, toolEntry, m);
+
+                            JsonObject toolTarget = new JsonObject();
+                            toolTarget.addProperty("item", fullTool);
+                            toolTarget.addProperty("count", 1);
+                            toolTarget.addProperty("obtain_method", m.name());
+                            toolTarget.addProperty("is_tool_prereq", true);
+
+                            String toolSubType = buildSubgoalTarget(toolTarget, toolEntry, m,
+                                    state, toolPriority, parentGoalId, derived, seen);
+
+                            derived.add(new GoalSet.Goal(toolGoalId, toolSubType,
+                                    toolPriority, toolTarget, parentGoalId));
+                        }
 
                         decomposeItem(toolItem, parentGoalId, subPriority, state, derived, seen);
                     }
@@ -442,7 +568,7 @@ public class GoalDecomposer {
      */
     private boolean hasContainerAccess(WorldState state, String container) {
         String fullId = "minecraft:" + container;
-        if (state.hasItemInInventory(fullId, 1)) return true;
+        if (state.hasItem(fullId, 1)) return true;
         List<BlockPos> nearby = state.nearbyBlocks.get(fullId);
         return nearby != null && !nearby.isEmpty();
     }
@@ -509,8 +635,8 @@ public class GoalDecomposer {
             if (seen.contains(goalId)) continue;
             seen.add(goalId);
 
-            // Skip if already satisfied
-            if (state.hasItem(fullItem, prereq.count())) continue;
+            // Skip if already satisfied (or better equipped)
+            if (state.isGoalItemSatisfied(fullItem, prereq.count())) continue;
 
             // Sub-priority descends from parent, spaced by index
             float subPriority = basePriority - PRIORITY_OFFSET - (i * 0.1f);
@@ -538,6 +664,47 @@ public class GoalDecomposer {
             derived.add(new GoalSet.Goal(stage.id(), stage.type(), stage.priority(),
                     stage.target(), compositeGoal.id));
         }
+    }
+
+    // ── Build structure decomposition ──────────────────────────────
+
+    /**
+     * Decompose a build_structure goal into have_item subgoals for each material.
+     * Materials are stored in the goal target as {"materials": {"minecraft:oak_planks": 64, ...}}.
+     * Each material is recursively decomposed via decomposeItem for tool/container prereqs.
+     */
+    private void decomposeBuildStructure(GoalSet.Goal goal, WorldState state,
+                                          List<GoalSet.Goal> derived, Set<String> seen) {
+        if (goal.target == null || !goal.target.has("materials")) return;
+
+        JsonObject materials = goal.target.getAsJsonObject("materials");
+        float basePriority = goal.priority;
+        int i = 0;
+
+        for (var entry : materials.entrySet()) {
+            String fullItem = entry.getKey();
+            int count = entry.getValue().getAsInt();
+            String cleanItem = stripNamespace(fullItem);
+            String goalId = "build_mat_" + cleanItem;
+
+            if (seen.contains(goalId)) continue;
+            if (state.isGoalItemSatisfied(fullItem, count)) continue;
+
+            seen.add(goalId);
+            float subPriority = basePriority - PRIORITY_OFFSET - (i * 0.05f);
+
+            JsonObject target = new JsonObject();
+            target.addProperty("item", fullItem);
+            target.addProperty("count", count);
+            derived.add(new GoalSet.Goal(goalId, "have_item", subPriority, target, goal.id));
+
+            // Recursively decompose item dependencies (tools, furnaces, etc.)
+            decomposeItem(cleanItem, goal.id, subPriority, state, derived, seen);
+            i++;
+        }
+
+        EmmaBridgeMod.LOGGER.info("[GoalDecomposer] Build structure '{}' → {} material subgoals",
+                goal.id, i);
     }
 
     /**

@@ -4,12 +4,16 @@ import com.emma.bridge.EmmaBridgeMod;
 import com.emma.bridge.catalogue.ItemRecipeEntry;
 import com.emma.bridge.catalogue.ItemRecipeRegistry;
 import com.emma.bridge.catalogue.ObtainMethod;
+import com.emma.bridge.catalogue.RecipeBookLookup;
 import com.emma.bridge.control.BlockInteraction;
 import com.emma.bridge.goap.GoapAction;
 import com.emma.bridge.goap.GoalSet;
 import com.emma.bridge.goap.WorldState;
+import com.emma.bridge.util.EndinvBridge;
 import com.emma.bridge.util.InventoryScanner;
 import com.emma.bridge.mixin.AbstractFurnaceScreenHandlerAccessor;
+import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
+import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 import com.google.gson.JsonObject;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -33,8 +37,11 @@ import java.util.*;
  *   Finds the first smeltable intermediate where we have raw input in inventory.
  *
  * Execution: Tick-based state machine:
- *   FIND_FURNACE → NAVIGATE → OPEN → WAIT_SCREEN → INSERT_INPUT → INSERT_FUEL → WAIT_COOK → EXTRACT → DONE
+ *   FIND_FURNACE → NAVIGATE → OPEN → WAIT_SCREEN → PLACE_RECIPE → WAIT_RECIPE → INSERT_FUEL → WAIT_COOK → EXTRACT → DONE
  *
+ * Uses the vanilla Recipe Book API (handlePlaceRecipe) to fill the furnace input slot.
+ * The server auto-fills from player inventory + EndInv.
+ * Fuel is handled separately: player inventory first, then endinv QUICK_MOVE fallback.
  * Uses AbstractFurnaceScreenHandlerAccessor for cook progress tracking.
  * Handles furnace, blast furnace, smoker (same slot layout: 0=input, 1=fuel, 2=output).
  *
@@ -44,7 +51,7 @@ public class SmeltItemAction extends GoapAction {
 
     private enum Phase {
         IDLE, FIND_FURNACE, EQUIP_FURNACE, PLACE_FURNACE, NAVIGATE, OPEN, WAIT_SCREEN,
-        INSERT_INPUT, INSERT_FUEL, WAIT_COOK, EXTRACT, DONE
+        PLACE_RECIPE, WAIT_RECIPE, INSERT_FUEL, INSERT_FUEL_PLACE, WAIT_COOK, EXTRACT, DONE
     }
 
     private Phase phase = Phase.IDLE;
@@ -53,6 +60,12 @@ public class SmeltItemAction extends GoapAction {
     private String targetItem = null;          // the smelted output we want
     private String rawInput = null;            // the raw material to insert
     private ItemRecipeEntry targetRecipe = null;
+    private RecipeDisplayId recipeDisplayId = null; // recipe book ID for handlePlaceRecipe
+    private boolean fuelFromEndinvSent = false;
+    private int fuelSourceSlot = -1;
+    private int targetGoalCount = 1;           // how many smelted items the goal needs
+    private int recipePlaceCount = 0;          // handlePlaceRecipe calls so far this batch
+    private int recipePlaceTarget = 0;         // total calls needed this batch
 
     private BlockPos furnacePos = null;
     private int waitTicks = 0;
@@ -98,7 +111,7 @@ public class SmeltItemAction extends GoapAction {
 
     @Override
     public boolean checkPreconditions(WorldState state) {
-        return true; // scoring determines viability
+        return true;
     }
 
     // ── Scoring ──────────────────────────────────────────────────
@@ -113,7 +126,7 @@ public class SmeltItemAction extends GoapAction {
             String goalItem = goal.target.get("item").getAsString();
             int goalCount = goal.target.has("count") ? goal.target.get("count").getAsInt() : 1;
 
-            if (state.hasItem(goalItem, goalCount)) continue;
+            if (state.isGoalItemSatisfied(goalItem, goalCount)) continue;
 
             // Find first smeltable item in dependency chain
             String[] smeltable = findSmeltableInChain(state, goalItem);
@@ -123,12 +136,18 @@ public class SmeltItemAction extends GoapAction {
             if (!hasFuelInInventory(state)) continue;
             if (!hasFurnaceAccess(state)) continue;
 
+            // Look up recipe book entry for handlePlaceRecipe
+            RecipeDisplayEntry bookEntry = RecipeBookLookup.findFirstSmeltingRecipe(smeltable[0]);
+            if (bookEntry == null) continue;
+
             float score = goal.priority * 0.7f; // below crafting
             if (score > bestScore) {
                 bestScore = score;
                 targetGoalId = goal.id;
                 targetItem = smeltable[0]; // output
                 rawInput = smeltable[1];   // input
+                recipeDisplayId = bookEntry.id();
+                targetGoalCount = goalCount;
             }
         }
 
@@ -147,17 +166,17 @@ public class SmeltItemAction extends GoapAction {
 
         for (String itemId : deps) {
             String fullId = itemId.contains(":") ? itemId : "minecraft:" + itemId;
-            if (state.hasItemInInventory(fullId, 1)) continue;
+            if (state.hasItem(fullId, 1)) continue;
 
             List<ItemRecipeEntry> entries = ItemRecipeRegistry.getEntries(itemId);
             for (ItemRecipeEntry entry : entries) {
-                if (entry.getObtainMethod() != ObtainMethod.SMELT) continue;
+                if (!entry.getObtainMethod().isSmeltType()) continue;
                 String[] smeltFrom = entry.getSmeltFrom();
                 if (smeltFrom == null) continue;
 
                 for (String input : smeltFrom) {
                     String inputId = input.contains(":") ? input : "minecraft:" + input;
-                    if (state.hasItemInInventory(inputId, 1)) {
+                    if (state.hasItem(inputId, 1)) {
                         return new String[]{fullId, inputId};
                     }
                 }
@@ -170,13 +189,16 @@ public class SmeltItemAction extends GoapAction {
         for (String type : List.of("minecraft:furnace", "minecraft:blast_furnace", "minecraft:smoker")) {
             List<BlockPos> positions = state.nearbyBlocks.get(type);
             if (positions != null && !positions.isEmpty()) return true;
-            if (state.hasItemInInventory(type, 1)) return true;
+            if (state.hasItem(type, 1)) return true;
         }
         return false;
     }
 
     private boolean hasFuelInInventory(WorldState state) {
         for (var entry : state.playerInventory.entrySet()) {
+            if (isFuel(entry.getKey()) && entry.getValue() > 0) return true;
+        }
+        for (var entry : state.endinvInventory.entrySet()) {
             if (isFuel(entry.getKey()) && entry.getValue() > 0) return true;
         }
         return false;
@@ -192,7 +214,7 @@ public class SmeltItemAction extends GoapAction {
         String id = targetItem.contains(":") ? targetItem.split(":")[1] : targetItem;
         List<ItemRecipeEntry> entries = ItemRecipeRegistry.getEntries(id);
         for (ItemRecipeEntry entry : entries) {
-            if (entry.getObtainMethod() == ObtainMethod.SMELT) {
+            if (entry.getObtainMethod().isSmeltType()) {
                 targetRecipe = entry;
                 break;
             }
@@ -200,6 +222,19 @@ public class SmeltItemAction extends GoapAction {
 
         if (targetRecipe == null) {
             EmmaBridgeMod.LOGGER.warn("[GOAP SmeltItem] No smelt recipe for {}", targetItem);
+            return;
+        }
+
+        // Resolve recipe book entry if not already done during scoring
+        if (recipeDisplayId == null) {
+            RecipeDisplayEntry bookEntry = RecipeBookLookup.findFirstSmeltingRecipe(id);
+            if (bookEntry != null) {
+                recipeDisplayId = bookEntry.id();
+            }
+        }
+
+        if (recipeDisplayId == null) {
+            EmmaBridgeMod.LOGGER.warn("[GOAP SmeltItem] No recipe book entry for {}", targetItem);
             return;
         }
 
@@ -226,8 +261,10 @@ public class SmeltItemAction extends GoapAction {
             case NAVIGATE -> tickNavigate(client, player);
             case OPEN -> tickOpen(client, player);
             case WAIT_SCREEN -> tickWaitScreen(client, player);
-            case INSERT_INPUT -> tickInsertInput(client, player);
+            case PLACE_RECIPE -> tickPlaceRecipe(client, player);
+            case WAIT_RECIPE -> tickWaitRecipe(client, player);
             case INSERT_FUEL -> tickInsertFuel(client, player);
+            case INSERT_FUEL_PLACE -> tickInsertFuelPlace(client, player);
             case WAIT_COOK -> tickWaitCook(client, player);
             case EXTRACT -> tickExtract(client, player);
             case DONE -> {
@@ -268,6 +305,10 @@ public class SmeltItemAction extends GoapAction {
 
         // No furnace found — place one if we have it
         if (hasItemInInventory(player, Items.FURNACE)) {
+            phase = Phase.EQUIP_FURNACE;
+        } else if (com.emma.bridge.util.EndinvBridge.extractToSlot(Items.FURNACE,
+                player.getInventory().getSelectedSlot())) {
+            EmmaBridgeMod.LOGGER.info("[GOAP SmeltItem] Extracted furnace from endinv");
             phase = Phase.EQUIP_FURNACE;
         } else {
             EmmaBridgeMod.LOGGER.info("[GOAP SmeltItem] No furnace available");
@@ -318,7 +359,7 @@ public class SmeltItemAction extends GoapAction {
     }
 
     private void tickNavigate(Minecraft client, LocalPlayer player) {
-        switch (GoapNavHelper.tickNavigateToBlock(player, furnacePos, ++waitTicks)) {
+        switch (GoapNavHelper.tickNavigateToBlock(player, furnacePos, ++waitTicks, 200, GoapNavHelper.CONTAINER_ARRIVAL_DIST)) {
             case NO_TARGET -> phase = Phase.FIND_FURNACE;
             case ARRIVED -> { phase = Phase.OPEN; waitTicks = 0; }
             case TIMEOUT -> {
@@ -344,7 +385,7 @@ public class SmeltItemAction extends GoapAction {
 
     private void tickWaitScreen(Minecraft client, LocalPlayer player) {
         if (player.containerMenu instanceof AbstractFurnaceMenu) {
-            phase = Phase.INSERT_INPUT;
+            phase = Phase.PLACE_RECIPE;
             return;
         }
 
@@ -355,37 +396,81 @@ public class SmeltItemAction extends GoapAction {
         }
     }
 
-    private void tickInsertInput(Minecraft client, LocalPlayer player) {
+    /**
+     * Send the recipe book packet to auto-fill the furnace input slot.
+     * Calls handlePlaceRecipe(false) N times to queue exactly the right count.
+     * Rate-limited to 1 call per 2 ticks (~10/sec) to avoid overwhelming the server.
+     * Smelting yields 1 output per input, so N crafts = N items.
+     */
+    private void tickPlaceRecipe(Minecraft client, LocalPlayer player) {
+        if (recipeDisplayId == null) {
+            EmmaBridgeMod.LOGGER.warn("[GOAP SmeltItem] No RecipeDisplayId for {}", targetItem);
+            phase = Phase.DONE;
+            return;
+        }
+
         var handler = player.containerMenu;
         if (!(handler instanceof AbstractFurnaceMenu)) {
             phase = Phase.OPEN;
             return;
         }
 
-        // Check if input slot already has material
+        // Check if input slot already has our material (e.g., from a previous run)
         var inputStack = handler.slots.get(FURNACE_INPUT).getItem();
         if (!inputStack.isEmpty()) {
             String inputId = BuiltInRegistries.ITEM.getKey(inputStack.getItem()).toString();
             if (inputId.equals(rawInput)) {
-                // Already has our material — go to fuel
                 phase = Phase.INSERT_FUEL;
                 return;
             }
         }
 
-        // Find raw input in player inventory area
-        int sourceSlot = ScreenHelper.findItem(handler, FURNACE_INV_START, rawInput);
-        if (sourceSlot < 0) {
-            EmmaBridgeMod.LOGGER.warn("[GOAP SmeltItem] Raw input {} not found in inventory", rawInput);
-            phase = Phase.DONE;
+        // First tick: calculate how many recipe placements we need
+        if (recipePlaceTarget == 0) {
+            int already = countTargetInInventory(player, targetItem);
+            int stillNeeded = Math.max(1, targetGoalCount - already);
+            recipePlaceTarget = Math.min(stillNeeded, 64); // cap at stack size
+            recipePlaceCount = 0;
+            waitTicks = 0;
+            EmmaBridgeMod.LOGGER.info("[GOAP SmeltItem] Batch plan: {} items to smelt (have={}, need={})",
+                    recipePlaceTarget, already, targetGoalCount);
+        }
+
+        // Rate-limit: 1 call every 2 ticks (~10/sec)
+        if (++waitTicks < 2) return;
+        waitTicks = 0;
+
+        client.gameMode.handlePlaceRecipe(handler.containerId, recipeDisplayId, false);
+        recipePlaceCount++;
+
+        if (recipePlaceCount >= recipePlaceTarget) {
+            recipePlaceTarget = 0; // reset for next batch
+            phase = Phase.WAIT_RECIPE;
+            waitTicks = 0;
+        }
+    }
+
+    /**
+     * Wait for the server to process recipe placement and populate the input slot.
+     */
+    private void tickWaitRecipe(Minecraft client, LocalPlayer player) {
+        var handler = player.containerMenu;
+        if (!(handler instanceof AbstractFurnaceMenu)) {
+            phase = Phase.OPEN;
             return;
         }
 
-        // Shift-click raw material to input slot
-        client.gameMode.handleContainerInput(
-                handler.containerId, sourceSlot, 0, ContainerInput.QUICK_MOVE, player);
+        var inputStack = handler.slots.get(FURNACE_INPUT).getItem();
+        if (!inputStack.isEmpty()) {
+            phase = Phase.INSERT_FUEL;
+            waitTicks = 0;
+            return;
+        }
 
-        phase = Phase.INSERT_FUEL;
+        if (++waitTicks > 40) {
+            EmmaBridgeMod.LOGGER.warn("[GOAP SmeltItem] Recipe placement timeout for {}", targetItem);
+            phase = Phase.DONE;
+        }
     }
 
     private void tickInsertFuel(Minecraft client, LocalPlayer player) {
@@ -398,53 +483,107 @@ public class SmeltItemAction extends GoapAction {
         // Check if furnace is already burning
         ContainerData pd = ((AbstractFurnaceScreenHandlerAccessor) furnace).getPropertyDelegate();
         int burnTimeRemaining = pd.get(0);
+
+        // Check fuel slot contents
+        var fuelStack = handler.slots.get(FURNACE_FUEL).getItem();
+        String fuelSlotId = fuelStack.isEmpty() ? "empty"
+                : BuiltInRegistries.ITEM.getKey(fuelStack.getItem()).toString();
+
+        EmmaBridgeMod.LOGGER.info("[GOAP SmeltItem] INSERT_FUEL: burnTime={}, fuelSlot={}, slotsSize={}",
+                burnTimeRemaining, fuelSlotId, handler.slots.size());
+
         if (burnTimeRemaining > 0) {
-            // Already burning — go to wait
+            EmmaBridgeMod.LOGGER.info("[GOAP SmeltItem] Furnace already burning, skipping fuel");
             phase = Phase.WAIT_COOK;
             noProgressTicks = 0;
             lastCookProgress = 0;
+            fuelFromEndinvSent = false;
             return;
         }
 
-        // Check if fuel slot already has fuel
-        var fuelStack = handler.slots.get(FURNACE_FUEL).getItem();
-        if (!fuelStack.isEmpty()) {
-            String fuelId = BuiltInRegistries.ITEM.getKey(fuelStack.getItem()).toString();
-            if (isFuel(fuelId)) {
-                // Has fuel — the furnace should start burning
-                phase = Phase.WAIT_COOK;
-                noProgressTicks = 0;
-                lastCookProgress = 0;
-                return;
-            }
+        if (!fuelStack.isEmpty() && isFuel(fuelSlotId)) {
+            EmmaBridgeMod.LOGGER.info("[GOAP SmeltItem] Fuel slot already has {}", fuelSlotId);
+            phase = Phase.WAIT_COOK;
+            noProgressTicks = 0;
+            lastCookProgress = 0;
+            fuelFromEndinvSent = false;
+            return;
         }
 
-        // Find fuel in player inventory area
+        // If we already sent an endinv request, wait for it to arrive
+        if (fuelFromEndinvSent) {
+            if (++waitTicks > 40) {
+                EmmaBridgeMod.LOGGER.warn("[GOAP SmeltItem] Fuel from endinv timeout");
+                fuelFromEndinvSent = false;
+                phase = Phase.DONE;
+            }
+            return;
+        }
+
+        // Find fuel in player inventory area of the furnace screen
         int fuelSlot = -1;
+        String fuelItemId = null;
         for (int i = FURNACE_INV_START; i < handler.slots.size(); i++) {
             var stack = handler.slots.get(i).getItem();
             if (!stack.isEmpty()) {
                 String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
                 if (isFuel(id)) {
                     fuelSlot = i;
+                    fuelItemId = id;
                     break;
                 }
             }
         }
 
-        if (fuelSlot < 0) {
-            EmmaBridgeMod.LOGGER.warn("[GOAP SmeltItem] No fuel available in inventory");
-            phase = Phase.DONE;
+        if (fuelSlot >= 0) {
+            // Cursor-based pickup: pick up fuel from inventory, then place into fuel slot next tick
+            EmmaBridgeMod.LOGGER.info("[GOAP SmeltItem] Picking up fuel {} from slot {} (of {})",
+                    fuelItemId, fuelSlot, handler.slots.size());
+            client.gameMode.handleContainerInput(
+                    handler.containerId, fuelSlot, 0, ContainerInput.PICKUP, player);
+            fuelSourceSlot = fuelSlot;
+            phase = Phase.INSERT_FUEL_PLACE;
+            waitTicks = 0;
             return;
         }
 
-        // Shift-click fuel to fuel slot
+        // No fuel in player inventory — pull from endinv directly into furnace
+        Map<String, Integer> endinvItems = EndinvBridge.getAllItems();
+        for (var entry : endinvItems.entrySet()) {
+            if (isFuel(entry.getKey()) && entry.getValue() > 0) {
+                if (EndinvBridge.quickMoveToContainer(entry.getKey())) {
+                    EmmaBridgeMod.LOGGER.info("[GOAP SmeltItem] Requesting fuel {} from endinv", entry.getKey());
+                    fuelFromEndinvSent = true;
+                    waitTicks = 0;
+                    return;
+                }
+            }
+        }
+
+        EmmaBridgeMod.LOGGER.warn("[GOAP SmeltItem] No fuel available anywhere");
+        phase = Phase.DONE;
+    }
+
+    /**
+     * Place fuel from cursor into the furnace fuel slot (slot 1).
+     * Second tick of the cursor-based fuel insertion (after PICKUP in INSERT_FUEL).
+     */
+    private void tickInsertFuelPlace(Minecraft client, LocalPlayer player) {
+        var handler = player.containerMenu;
+        if (!(handler instanceof AbstractFurnaceMenu)) {
+            phase = Phase.OPEN;
+            return;
+        }
+
+        // Place fuel from cursor into fuel slot 1
         client.gameMode.handleContainerInput(
-                handler.containerId, fuelSlot, 0, ContainerInput.QUICK_MOVE, player);
+                handler.containerId, FURNACE_FUEL, 0, ContainerInput.PICKUP, player);
+        EmmaBridgeMod.LOGGER.info("[GOAP SmeltItem] Placed fuel into fuel slot {}", FURNACE_FUEL);
 
         phase = Phase.WAIT_COOK;
         noProgressTicks = 0;
         lastCookProgress = 0;
+        fuelSourceSlot = -1;
     }
 
     private void tickWaitCook(Minecraft client, LocalPlayer player) {
@@ -508,6 +647,14 @@ public class SmeltItemAction extends GoapAction {
             return;
         }
 
+        // Retrieve remaining fuel before leaving
+        var fuelStack = handler.slots.get(FURNACE_FUEL).getItem();
+        if (!fuelStack.isEmpty()) {
+            client.gameMode.handleContainerInput(
+                    handler.containerId, FURNACE_FUEL, 0, ContainerInput.QUICK_MOVE, player);
+            EmmaBridgeMod.LOGGER.info("[GOAP SmeltItem] Retrieved remaining fuel from furnace");
+        }
+
         phase = Phase.DONE;
     }
 
@@ -515,6 +662,17 @@ public class SmeltItemAction extends GoapAction {
 
     private boolean hasItemInInventory(LocalPlayer player, net.minecraft.world.item.Item item) {
         return InventoryScanner.hasItem(player.getInventory(), item);
+    }
+
+    /**
+     * Count how many of the target smelted item are already in inventory (player + endinv).
+     */
+    private int countTargetInInventory(LocalPlayer player, String targetItem) {
+        if (targetItem == null) return 0;
+        int count = InventoryScanner.countItems(player.getInventory(),
+                stack -> BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(targetItem));
+        count += EndinvBridge.getCount(targetItem);
+        return count;
     }
 
     // ── Lifecycle ────────────────────────────────────────────────
@@ -534,6 +692,12 @@ public class SmeltItemAction extends GoapAction {
         targetItem = null;
         rawInput = null;
         targetRecipe = null;
+        recipeDisplayId = null;
+        fuelFromEndinvSent = false;
+        fuelSourceSlot = -1;
+        targetGoalCount = 1;
+        recipePlaceCount = 0;
+        recipePlaceTarget = 0;
         furnacePos = null;
     }
 

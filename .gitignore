@@ -15,6 +15,12 @@ java/emma-overflow/build/
 java/emma-overflow/.gradle/
 java/emma-gameplay-logger/build/
 java/emma-gameplay-logger/.gradle/
+java/emma-endinv/build/
+java/emma-endinv/.gradle/
+java/emma-twitch/build/
+java/emma-twitch/.gradle/
+java/emma-recipe-extractor/build/
+java/emma-recipe-extractor/.gradle/
 java/dist/
 
 # IDE
@@ -33,3 +39,15 @@ Thumbs.db
 
 # State files
 smelting_jobs.json
+
+# Local Claude config
+.claude/settings.local.json
+**/claude.local.md
+
+# Backups
+*.zip
+
+# Binary build outputs in source
+java/*/bin/
+# Nested .claude dirs (not the root project one)
+java/**/.claude/

@@ -4,12 +4,12 @@ import com.emma.bridge.EmmaBridgeMod;
 import com.emma.bridge.catalogue.ItemRecipeEntry;
 import com.emma.bridge.catalogue.ItemRecipeRegistry;
 import com.emma.bridge.catalogue.ObtainMethod;
+import com.emma.bridge.catalogue.RecipeBookLookup;
 import com.emma.bridge.control.BlockInteraction;
 import com.emma.bridge.goap.GoapAction;
 import com.emma.bridge.goap.GoalSet;
 import com.emma.bridge.goap.WorldState;
 import com.emma.bridge.util.InventoryScanner;
-import com.emma.bridge.util.ItemClassifier;
 import com.google.gson.JsonObject;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.client.Minecraft;
@@ -18,6 +18,8 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.inventory.CraftingMenu;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
+import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
@@ -32,9 +34,10 @@ import java.util.*;
  *   Example: goal=stone_axe, have logs+cobblestone → crafts planks first.
  *
  * Execution: Tick-based state machine:
- *   FIND_TABLE → NAVIGATE → OPEN → WAIT_SCREEN → FILL_GRID → EXTRACT → DONE
+ *   FIND_TABLE → NAVIGATE → OPEN → WAIT_SCREEN → PLACE_RECIPE → WAIT_RECIPE → EXTRACT → DONE
  *
- * Uses direct MC API calls (interactionManager.clickSlot, rightClickBlock).
+ * Uses the vanilla Recipe Book API (handlePlaceRecipe) to fill the crafting grid.
+ * The server auto-fills ingredients from player inventory + EndInv.
  * Zero EmmaClef dependencies.
  */
 public class CraftItemAction extends GoapAction {
@@ -42,7 +45,7 @@ public class CraftItemAction extends GoapAction {
     // ── State machine ────────────────────────────────────────────
     private enum Phase {
         IDLE, FIND_TABLE, EQUIP_TABLE, PLACE_TABLE, NAVIGATE, OPEN, WAIT_SCREEN,
-        FILL_GRID, EXTRACT, BREAK_TABLE, COLLECT_TABLE, DONE
+        PLACE_RECIPE, WAIT_RECIPE, EXTRACT, BREAK_TABLE, COLLECT_TABLE, DONE
     }
 
     private Phase phase = Phase.IDLE;
@@ -50,34 +53,37 @@ public class CraftItemAction extends GoapAction {
     private String targetGoalId = null;
     private String targetItem = null;          // the item we'll actually craft (may be intermediate)
     private ItemRecipeEntry targetRecipe = null;
+    private RecipeDisplayId recipeDisplayId = null; // recipe book ID for handlePlaceRecipe
 
     private BlockPos tablePos = null;
     private boolean usePlayerGrid = false;     // true for 2x2 recipes
-    private int fillSlotIndex = 0;             // tracks which grid slot we're filling
     private int waitTicks = 0;
     private int extractCount = 0;              // how many times we've extracted output
+
+    // Batch crafting: precise count control via recipe manager
+    private int targetGoalCount = 1;           // how many items the goal needs
+    private int craftsRemaining = 0;           // crafts left after current batch
+    private int recipePlaceCount = 0;          // handlePlaceRecipe calls this batch
+    private int recipePlaceTarget = 0;         // total calls needed this batch
+    private String originalGoalItem = null;    // top-level goal item for chain re-check
 
     // Sub-craft state: when we need to craft a crafting table first
     private boolean subCraftingTable = false;
     private String savedTargetItem = null;
     private ItemRecipeEntry savedTargetRecipe = null;
+    private RecipeDisplayId savedRecipeDisplayId = null;
+
+    // Cached WorldState and GoalSet from last scoring pass
+    private WorldState cachedState = null;
+    private GoalSet cachedGoals = null;
 
     // Break/collect tracking for placed tables
     private boolean placedTable = false;
     private int breakTicks = 0;
     private int collectTicks = 0;
 
-    // Slot mapping:
-    //   Crafting table: grid=1-9, output=0, player inv starts at 10
-    //   Player inventory: grid=1-4, output=0, main inv starts at 5? Actually InventoryMenu:
-    //     0=output, 1-4=crafting grid, 5-8=armor, 9-44=main+hotbar (9-35=main, 36-44=hotbar)
-    private static final int TABLE_OUTPUT = 0;
-    private static final int TABLE_GRID_START = 1;  // 1-9
-    private static final int TABLE_INV_START = 10;  // 10-45
-
-    private static final int PLAYER_OUTPUT = 0;
-    private static final int PLAYER_GRID_START = 1; // 1-4
-    private static final int PLAYER_INV_START = 9;  // 9-44 (main+hotbar in InventoryMenu)
+    // Output slot is 0 for both CraftingMenu and InventoryMenu
+    private static final int OUTPUT_SLOT = 0;
 
     @Override
     public String getName() {
@@ -86,13 +92,24 @@ public class CraftItemAction extends GoapAction {
 
     @Override
     public boolean checkPreconditions(WorldState state) {
-        return true; // scoring determines viability
+        return true;
     }
 
     // ── Scoring ──────────────────────────────────────────────────
 
+    private float lastScore = 0;
+
     @Override
     public float computeScore(WorldState state, GoalSet goals) {
+        cachedState = state;
+        cachedGoals = goals;
+
+        // While actively crafting, maintain previous score — ingredients may be
+        // in the crafting grid (not visible to inventory checks)
+        if (crafting && phase != Phase.IDLE) {
+            return lastScore;
+        }
+
         float bestScore = 0;
 
         for (GoalSet.Goal goal : goals.getGoals()) {
@@ -101,11 +118,11 @@ public class CraftItemAction extends GoapAction {
             String goalItem = goal.target.get("item").getAsString();
             int goalCount = goal.target.has("count") ? goal.target.get("count").getAsInt() : 1;
 
-            // Skip if we already have enough
-            if (state.hasItem(goalItem, goalCount)) continue;
+            // Skip if we already have enough (or better equipped)
+            if (state.isGoalItemSatisfied(goalItem, goalCount)) continue;
 
             // Find the first craftable item in the dependency chain
-            String craftable = findCraftableInChain(state, goalItem);
+            String craftable = findCraftableInChain(state, goalItem, goals);
             if (craftable == null) continue;
 
             float score = goal.priority * 0.8f;
@@ -113,33 +130,84 @@ public class CraftItemAction extends GoapAction {
                 bestScore = score;
                 targetGoalId = goal.id;
                 targetItem = craftable;
+                targetGoalCount = goalCount;
             }
         }
+
+        lastScore = bestScore;
 
         return bestScore;
     }
 
     /**
-     * Walk transitive dependency chain for goalItem.
-     * Returns the first item (starting from raw deps, ending with goalItem itself)
-     * where a CRAFT recipe exists AND we have all ingredients in inventory.
-     * Returns null if nothing is ready to craft.
+     * Walk decomposed goals to find the first craftable item in the dependency chain.
+     * Uses the GoalDecomposer's output (which already resolved tag alternatives to
+     * what the player has — e.g., spruce_planks instead of generic "planks").
+     *
+     * Collects all craft-type derived goals descending from the parent goal, sorts
+     * them by priority (lowest first = raw materials), and returns the first one
+     * where we have all ingredients + recipe book entry.
+     *
+     * Falls back to getTransitiveDependencies only if no derived goals exist.
      */
-    private String findCraftableInChain(WorldState state, String goalItem) {
-        String goalId = goalItem.contains(":") ? goalItem.split(":")[1] : goalItem;
+    private String findCraftableInChain(WorldState state, String goalItem, GoalSet goals) {
+        boolean hasTableAccess = hasCraftingTableAccess(state);
+        GoalSet activeGoals = goals != null ? goals : cachedGoals;
 
-        // Get all dependencies in topological order (raw materials first)
+        // Collect craft-type derived goals that are descendants of goalItem's parent goal
+        if (activeGoals != null) {
+            // Find the parent goal ID for this goalItem
+            String parentId = null;
+            for (GoalSet.Goal g : activeGoals.getGoals()) {
+                if (g.target != null && g.target.has("item")
+                        && g.target.get("item").getAsString().equals(goalItem)) {
+                    parentId = g.id;
+                    break;
+                }
+            }
+
+            if (parentId != null) {
+                // Collect all craft-method derived goals under this parent, sorted by priority (ascending)
+                List<GoalSet.Goal> craftGoals = new ArrayList<>();
+                for (GoalSet.Goal dg : activeGoals.getDerivedGoals()) {
+                    if (!parentId.equals(dg.parentGoalId)) continue;
+                    if (dg.target == null || !dg.target.has("item")) continue;
+                    if (!dg.target.has("obtain_method")) continue;
+                    String method = dg.target.get("obtain_method").getAsString();
+                    if (!method.startsWith("CRAFT_")) continue;
+                    craftGoals.add(dg);
+                }
+                // Sort by priority ascending (lowest = most raw, should craft first)
+                craftGoals.sort(Comparator.comparingDouble(g -> g.priority));
+
+                for (GoalSet.Goal dg : craftGoals) {
+                    String dgItem = dg.target.get("item").getAsString();
+                    int dgCount = dg.target.has("count") ? dg.target.get("count").getAsInt() : 1;
+                    if (state.isGoalItemSatisfied(dgItem, dgCount)) continue;
+
+                    String dgId = dgItem.contains(":") ? dgItem.split(":")[1] : dgItem;
+                    if (resolveRecipe(state, dgId, hasTableAccess)) {
+                        return dgItem;
+                    }
+                }
+
+                // Also check the goal item itself (it might be directly craftable)
+                String goalId = goalItem.contains(":") ? goalItem.split(":")[1] : goalItem;
+                if (!state.hasItem(goalItem, 1) && resolveRecipe(state, goalId, hasTableAccess)) {
+                    return goalItem;
+                }
+            }
+        }
+
+        // Fallback: use generic transitive dependencies (no decomposed goals available)
+        String goalId = goalItem.contains(":") ? goalItem.split(":")[1] : goalItem;
         List<String> deps = ItemRecipeRegistry.getTransitiveDependencies(goalId);
-        // Add the goal item itself at the end
         deps.add(goalId);
 
         for (String itemId : deps) {
-            // Skip if we already have this item
             String fullId = itemId.contains(":") ? itemId : "minecraft:" + itemId;
-            if (state.hasItemInInventory(fullId, 1)) continue;
-
-            // Check if this item has a craft recipe where we have ingredients
-            if (hasIngredients(state, itemId)) {
+            if (state.hasItem(fullId, 1)) continue;
+            if (resolveRecipe(state, itemId, hasTableAccess)) {
                 return fullId;
             }
         }
@@ -147,36 +215,51 @@ public class CraftItemAction extends GoapAction {
     }
 
     /**
-     * Check if we have ingredients for any CRAFT recipe of this item.
-     * Uses tag-aware matching: if recipe needs oak_planks, any planks type works.
+     * Find a craftable recipe for itemId, verify ingredients, and look up the recipe book ID.
+     * On success: saves targetRecipe + recipeDisplayId.
+     * Returns false if no recipe found or recipe not in client recipe book (no fallback).
      */
-    private boolean hasIngredients(WorldState state, String itemId) {
+    private boolean resolveRecipe(WorldState state, String itemId, boolean hasTableAccess) {
         String id = itemId.contains(":") ? itemId.split(":")[1] : itemId;
         List<ItemRecipeEntry> entries = ItemRecipeRegistry.getEntries(id);
         if (entries.isEmpty()) return false;
 
         for (ItemRecipeEntry entry : entries) {
             if (!entry.getObtainMethod().isCraftType()) continue;
+            if (entry.getObtainMethod() != ObtainMethod.CRAFT_SHAPED_2x2 && !hasTableAccess) continue;
 
             String[][] grid = entry.getCraftGrid();
             if (grid == null) continue;
 
+            // Check if we have all ingredients (resolve tag alternatives)
             Map<String, Integer> needed = new LinkedHashMap<>();
             for (String[] slotAlts : grid) {
-                if (slotAlts != null && slotAlts.length > 0) {
-                    String fullSlot = slotAlts[0].contains(":") ? slotAlts[0] : "minecraft:" + slotAlts[0];
-                    needed.merge(fullSlot, 1, Integer::sum);
+                if (slotAlts == null || slotAlts.length == 0) continue;
+                // Pick the first alternative the player actually has; fallback to slotAlts[0]
+                String best = slotAlts[0];
+                for (String alt : slotAlts) {
+                    String full = alt.contains(":") ? alt : "minecraft:" + alt;
+                    if (state.hasItem(full, 1)) { best = alt; break; }
                 }
+                String fullBest = best.contains(":") ? best : "minecraft:" + best;
+                needed.merge(fullBest, 1, Integer::sum);
             }
 
             boolean hasAll = true;
             for (var ingredientEntry : needed.entrySet()) {
-                if (!hasItemOrTagEquivalent(state, ingredientEntry.getKey(), ingredientEntry.getValue())) {
+                if (!state.hasItem(ingredientEntry.getKey(), ingredientEntry.getValue())) {
                     hasAll = false;
                     break;
                 }
             }
-            if (hasAll) return true;
+            if (hasAll) {
+                // Only look up recipe book AFTER confirming ingredients match
+                RecipeDisplayEntry bookEntry = RecipeBookLookup.findFirstCraftingRecipe(id);
+                if (bookEntry == null) return false;
+                targetRecipe = entry;
+                recipeDisplayId = bookEntry.id();
+                return true;
+            }
         }
         return false;
     }
@@ -187,13 +270,27 @@ public class CraftItemAction extends GoapAction {
     public void execute(Minecraft client) {
         if (targetItem == null) return;
 
-        // Find the recipe to use
-        String id = targetItem.contains(":") ? targetItem.split(":")[1] : targetItem;
-        List<ItemRecipeEntry> entries = ItemRecipeRegistry.getEntries(id);
-        for (ItemRecipeEntry entry : entries) {
-            if (!entry.getObtainMethod().isCraftType()) continue;
-            targetRecipe = entry;
-            break;
+        // targetRecipe + recipeDisplayId were set by resolveRecipe() during scoring.
+        // Fallback: if scoring didn't resolve (shouldn't happen), try to resolve now.
+        if (recipeDisplayId == null) {
+            String id = targetItem.contains(":") ? targetItem.split(":")[1] : targetItem;
+            RecipeDisplayEntry bookEntry = RecipeBookLookup.findFirstCraftingRecipe(id);
+            if (bookEntry != null) {
+                recipeDisplayId = bookEntry.id();
+            }
+            if (targetRecipe == null) {
+                List<ItemRecipeEntry> entries = ItemRecipeRegistry.getEntries(id);
+                for (ItemRecipeEntry entry : entries) {
+                    if (!entry.getObtainMethod().isCraftType()) continue;
+                    targetRecipe = entry;
+                    break;
+                }
+            }
+        }
+
+        if (recipeDisplayId == null) {
+            EmmaBridgeMod.LOGGER.warn("[GOAP CraftItem] No recipe book entry for {}", targetItem);
+            return;
         }
 
         if (targetRecipe == null) {
@@ -203,12 +300,18 @@ public class CraftItemAction extends GoapAction {
 
         usePlayerGrid = (targetRecipe.getObtainMethod() == ObtainMethod.CRAFT_SHAPED_2x2);
         crafting = true;
-        fillSlotIndex = 0;
         extractCount = 0;
         waitTicks = 0;
         placedTable = false;
         breakTicks = 0;
         collectTicks = 0;
+        craftsRemaining = 0;
+        recipePlaceCount = 0;
+        recipePlaceTarget = 0;
+        // Save original goal item for chain re-check after each sub-craft
+        if (originalGoalItem == null) {
+            originalGoalItem = targetItem;
+        }
 
         if (usePlayerGrid) {
             // 2x2 recipes use player inventory — just open inventory
@@ -235,28 +338,59 @@ public class CraftItemAction extends GoapAction {
             case NAVIGATE -> tickNavigate(client, player);
             case OPEN -> tickOpen(client, player);
             case WAIT_SCREEN -> tickWaitScreen(client, player);
-            case FILL_GRID -> tickFillGrid(client, player);
+            case PLACE_RECIPE -> tickPlaceRecipe(client, player);
+            case WAIT_RECIPE -> tickWaitRecipe(client, player);
             case EXTRACT -> tickExtract(client, player);
             case BREAK_TABLE -> tickBreakTable(client, player);
             case COLLECT_TABLE -> tickCollectTable(client, player);
             case DONE -> {
                 ScreenHelper.closeIfOpen(client);
+                // Crafting may unlock new recipes — rebuild cache so next scoring sees them
+                RecipeBookLookup.invalidate();
                 if (subCraftingTable) {
                     // We just crafted a crafting_table — now place it and resume the original craft
                     subCraftingTable = false;
                     targetItem = savedTargetItem;
                     targetRecipe = savedTargetRecipe;
+                    recipeDisplayId = savedRecipeDisplayId;
                     savedTargetItem = null;
                     savedTargetRecipe = null;
+                    savedRecipeDisplayId = null;
                     usePlayerGrid = false;
-                    fillSlotIndex = 0;
                     extractCount = 0;
                     waitTicks = 0;
                     phase = Phase.EQUIP_TABLE;
                     EmmaBridgeMod.LOGGER.info("[GOAP CraftItem] Crafting table crafted, placing and resuming {}",
                             targetItem);
                 } else if (placedTable && tablePos != null) {
-                    // Recover the table we placed
+                    // Check if there's more to craft in the chain before breaking the table
+                    String goalForChain = originalGoalItem != null ? originalGoalItem : targetItem;
+                    boolean hasTableAccess = true; // we have the table placed right here
+                    String nextCraftable = findCraftableInChain(cachedState, goalForChain, null);
+                    if (nextCraftable != null) {
+                        String nextId = nextCraftable.contains(":") ? nextCraftable.split(":")[1] : nextCraftable;
+                        ItemRecipeEntry prevRecipe = targetRecipe;
+                        RecipeDisplayId prevDisplayId = recipeDisplayId;
+                        boolean nextNeedsTable = resolveRecipe(cachedState, nextId, true)
+                                && targetRecipe != null
+                                && targetRecipe.getObtainMethod() != ObtainMethod.CRAFT_SHAPED_2x2;
+                        if (!nextNeedsTable) {
+                            targetRecipe = prevRecipe;
+                            recipeDisplayId = prevDisplayId;
+                        }
+                        if (nextNeedsTable) {
+                            // Reuse the table for the next recipe in the chain
+                            targetItem = nextCraftable;
+                            extractCount = 0;
+                            waitTicks = 0;
+                            recipePlaceCount = 0;
+                            recipePlaceTarget = 0;
+                            phase = Phase.OPEN;
+                            EmmaBridgeMod.LOGGER.info("[GOAP CraftItem] Reusing table for next in chain: {}", targetItem);
+                            break;
+                        }
+                    }
+                    // No more 3x3 crafting needed — recover the table
                     breakTicks = 0;
                     phase = Phase.BREAK_TABLE;
                 } else {
@@ -294,7 +428,12 @@ public class CraftItemAction extends GoapAction {
         // No table found — check if we have one to place
         if (hasItemInInventory(player, Items.CRAFTING_TABLE)) {
             phase = Phase.EQUIP_TABLE;
-        } else if (canCraftTable(player)) {
+        } else if (com.emma.bridge.util.EndinvBridge.extractToSlot(Items.CRAFTING_TABLE,
+                player.getInventory().getSelectedSlot())) {
+            // Extracted from endinv for placement
+            EmmaBridgeMod.LOGGER.info("[GOAP CraftItem] Extracted crafting table from endinv");
+            phase = Phase.EQUIP_TABLE;
+        } else if (canCraftTable(player, cachedState)) {
             // Inline sub-craft: craft a crafting table in the 2x2 player grid first
             startSubCraftTable();
         } else {
@@ -306,17 +445,12 @@ public class CraftItemAction extends GoapAction {
 
     /**
      * Start an inline sub-craft of a crafting table in the 2x2 player grid.
-     * Saves the original target so we can resume after placing the table.
-     *
-     * Builds a synthetic recipe using whatever planks the player actually has,
-     * since the registry resolves the #planks tag to one specific type
-     * (e.g., oak_planks) which may not match what's in inventory.
+     * Uses the recipe book API — the server selects which planks to use.
      */
     private void startSubCraftTable() {
-        // Find what planks the player actually has
-        String plankType = findAnyPlankInInventory();
-        if (plankType == null) {
-            EmmaBridgeMod.LOGGER.warn("[GOAP CraftItem] canCraftTable was true but no planks found?");
+        RecipeDisplayEntry entry = RecipeBookLookup.findFirstCraftingRecipe("crafting_table");
+        if (entry == null) {
+            EmmaBridgeMod.LOGGER.warn("[GOAP CraftItem] crafting_table not in recipe book");
             crafting = false;
             phase = Phase.IDLE;
             return;
@@ -325,60 +459,39 @@ public class CraftItemAction extends GoapAction {
         // Save current target
         savedTargetItem = targetItem;
         savedTargetRecipe = targetRecipe;
+        savedRecipeDisplayId = recipeDisplayId;
         subCraftingTable = true;
 
-        // Build a synthetic 2x2 recipe: 4 of whatever planks we have
-        String plankId = plankType.contains(":") ? plankType.split(":")[1] : plankType;
-        String[][] grid = new String[][]{{plankId}, {plankId}, {plankId}, {plankId}};
-        targetRecipe = ItemRecipeEntry.ofCraft("crafting_table", ObtainMethod.CRAFT_SHAPED_2x2, grid, 1);
-
         targetItem = "minecraft:crafting_table";
+        targetRecipe = null; // not needed — recipe book handles everything
+        recipeDisplayId = entry.id();
         usePlayerGrid = true;
-        fillSlotIndex = 0;
         extractCount = 0;
         waitTicks = 0;
         phase = Phase.OPEN;
 
-        EmmaBridgeMod.LOGGER.info("[GOAP CraftItem] Sub-crafting crafting_table from {} in 2x2 grid before {}",
-                plankType, savedTargetItem);
-    }
-
-    /**
-     * Find any planks item in player inventory. Returns full ID (e.g., "minecraft:spruce_planks").
-     */
-    private String findAnyPlankInInventory() {
-        Minecraft client = Minecraft.getInstance();
-        if (client.player == null) return null;
-        var planks = InventoryScanner.findAll(client.player.getInventory(),
-                stack -> ItemClassifier.itemId(stack).contains("planks"));
-        // Fast path: single stack with 4+
-        for (var ss : planks) {
-            if (ss.stack().getCount() >= 4) return ItemClassifier.itemId(ss.stack());
-        }
-        // Slow path: sum across stacks per plank type
-        Map<String, Integer> plankCounts = new HashMap<>();
-        for (var ss : planks) {
-            String id = ItemClassifier.itemId(ss.stack());
-            plankCounts.merge(id, ss.stack().getCount(), Integer::sum);
-        }
-        for (var entry : plankCounts.entrySet()) {
-            if (entry.getValue() >= 4) return entry.getKey();
-        }
-        return null;
+        EmmaBridgeMod.LOGGER.info("[GOAP CraftItem] Sub-crafting crafting_table before {}", savedTargetItem);
     }
 
     /** Equip crafting table and find placement spot — place happens next tick. */
     private BlockPos pendingPlaceOn = null;
 
     private void tickEquipTable(Minecraft client, LocalPlayer player) {
-        // Find a placeable position near the player
+        // Find a placeable position near the player that doesn't overlap the player's body
         BlockPos below = player.blockPosition().below();
-        pendingPlaceOn = below;
+        pendingPlaceOn = null;
+        tablePos = null;
 
-        // Try positions around the player
+        // Try cardinal directions first, checking player overlap
         for (BlockPos offset : new BlockPos[]{
                 player.blockPosition().north(), player.blockPosition().south(),
                 player.blockPosition().east(), player.blockPosition().west()}) {
+            // Check horizontal distance to avoid placing where player overlaps
+            double dx = (offset.getX() + 0.5) - player.getX();
+            double dz = (offset.getZ() + 0.5) - player.getZ();
+            double horizontalDist = Math.sqrt(dx * dx + dz * dz);
+            if (horizontalDist < 1.0) continue;  // too close, player would overlap
+
             if (player.level().getBlockState(offset).isAir()
                     && player.level().getBlockState(offset.below()).isSolid()) {
                 pendingPlaceOn = offset.below();
@@ -387,11 +500,33 @@ public class CraftItemAction extends GoapAction {
             }
         }
 
+        // If no cardinal worked, try diagonal positions (2 blocks out)
         if (tablePos == null) {
-            // Place on top of block below player
+            for (BlockPos offset : new BlockPos[]{
+                    player.blockPosition().north().east(), player.blockPosition().north().west(),
+                    player.blockPosition().south().east(), player.blockPosition().south().west()}) {
+                double dx = (offset.getX() + 0.5) - player.getX();
+                double dz = (offset.getZ() + 0.5) - player.getZ();
+                double horizontalDist = Math.sqrt(dx * dx + dz * dz);
+                if (horizontalDist < 1.0) continue;
+
+                if (player.level().getBlockState(offset).isAir()
+                        && player.level().getBlockState(offset.below()).isSolid()) {
+                    pendingPlaceOn = offset.below();
+                    tablePos = offset;
+                    break;
+                }
+            }
+        }
+
+        // Last resort: place on player's own block (jump first to clear space)
+        if (tablePos == null) {
             if (player.level().getBlockState(player.blockPosition()).isAir()) {
                 tablePos = player.blockPosition();
                 pendingPlaceOn = below;
+                player.jumpFromGround();
+                jumpedForPlacement = true;
+                EmmaBridgeMod.LOGGER.info("[GOAP CraftItem] Jumping to place table at player position");
             } else {
                 EmmaBridgeMod.LOGGER.warn("[GOAP CraftItem] No space to place crafting table");
                 crafting = false;
@@ -405,9 +540,13 @@ public class CraftItemAction extends GoapAction {
         phase = Phase.PLACE_TABLE;  // place after 2-tick delay for server sync
     }
 
+    private boolean jumpedForPlacement = false;
+
     private void tickPlaceTable(Minecraft client, LocalPlayer player) {
-        // Wait 2 ticks after equip for server to sync held item
-        if (++waitTicks < 2) return;
+        // Wait for equip sync (2 ticks) + extra time if we jumped to clear player body (6 ticks)
+        int minWait = jumpedForPlacement ? 6 : 2;
+        if (++waitTicks < minWait) return;
+        jumpedForPlacement = false;
 
         if (pendingPlaceOn == null || tablePos == null) {
             phase = Phase.FIND_TABLE;
@@ -425,7 +564,7 @@ public class CraftItemAction extends GoapAction {
     }
 
     private void tickNavigate(Minecraft client, LocalPlayer player) {
-        switch (GoapNavHelper.tickNavigateToBlock(player, tablePos, ++waitTicks)) {
+        switch (GoapNavHelper.tickNavigateToBlock(player, tablePos, ++waitTicks, 200, GoapNavHelper.CONTAINER_ARRIVAL_DIST)) {
             case NO_TARGET -> phase = Phase.FIND_TABLE;
             case ARRIVED -> { phase = Phase.OPEN; waitTicks = 0; }
             case TIMEOUT -> {
@@ -466,8 +605,7 @@ public class CraftItemAction extends GoapAction {
         }
 
         if (open) {
-            fillSlotIndex = 0;
-            phase = Phase.FILL_GRID;
+            phase = Phase.PLACE_RECIPE;
             return;
         }
 
@@ -478,72 +616,81 @@ public class CraftItemAction extends GoapAction {
         }
     }
 
-    private void tickFillGrid(Minecraft client, LocalPlayer player) {
-        if (targetRecipe == null) {
+    /**
+     * Send the recipe book packet to auto-fill the crafting grid.
+     * Calls handlePlaceRecipe(false) N times to queue exactly the right number of crafts.
+     * Rate-limited to 1 call per 2 ticks (~10/sec) to avoid overwhelming the server.
+     * Caps at 64 input items per batch; excess is handled via craftsRemaining.
+     */
+    private void tickPlaceRecipe(Minecraft client, LocalPlayer player) {
+        if (recipeDisplayId == null) {
+            EmmaBridgeMod.LOGGER.warn("[GOAP CraftItem] No RecipeDisplayId for {}", targetItem);
             phase = Phase.DONE;
             return;
         }
 
-        String[][] grid = targetRecipe.getCraftGrid();
-        if (grid == null) {
-            phase = Phase.DONE;
+        var handler = player.containerMenu;
+        if (handler == null) {
+            phase = Phase.OPEN;
             return;
         }
 
-        int gridSize = usePlayerGrid ? 4 : 9;
-        int gridStart = usePlayerGrid ? PLAYER_GRID_START : TABLE_GRID_START;
-        int invStart = usePlayerGrid ? PLAYER_INV_START : TABLE_INV_START;
-
-        // Process one grid slot per tick
-        while (fillSlotIndex < gridSize) {
-            int i = fillSlotIndex;
-            fillSlotIndex++;
-
-            String[] slotAlts = (i < grid.length) ? grid[i] : null;
-            if (slotAlts == null || slotAlts.length == 0) continue; // empty slot
-            String ingredient = slotAlts[0]; // representative — tag matching finds actual item
-
-            String fullIngredient = ingredient.contains(":") ? ingredient : "minecraft:" + ingredient;
-            int gridSlot = gridStart + i;
-
-            // Check if slot already has the right item
-            var handler = player.containerMenu;
-            if (handler == null) {
-                phase = Phase.OPEN;
-                return;
-            }
-
-            if (gridSlot < handler.slots.size()) {
-                var currentStack = handler.slots.get(gridSlot).getItem();
-                if (!currentStack.isEmpty()) {
-                    String currentId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(currentStack.getItem()).toString();
-                    if (currentId.equals(fullIngredient)) {
-                        continue; // already filled
-                    }
-                }
-            }
-
-            // Find this ingredient in player inventory area
-            int syncId = handler.containerId;
-            int sourceSlot = ScreenHelper.findItemOrTagEquivalent(handler, invStart, fullIngredient);
-
-            if (sourceSlot < 0) {
-                EmmaBridgeMod.LOGGER.warn("[GOAP CraftItem] Can't find {} in inventory", fullIngredient);
-                phase = Phase.DONE; // abort
-                return;
-            }
-
-            // Pick up from inventory, right-click to place 1 in grid, put remainder back
-            client.gameMode.handleContainerInput(syncId, sourceSlot, 0, ContainerInput.PICKUP, player);
-            client.gameMode.handleContainerInput(syncId, gridSlot, 1, ContainerInput.PICKUP, player);
-            client.gameMode.handleContainerInput(syncId, sourceSlot, 0, ContainerInput.PICKUP, player);
-
-            return; // one slot per tick
+        // First tick in this phase: calculate how many recipe placements we need
+        if (recipePlaceTarget == 0) {
+            int outputPerCraft = targetRecipe != null ? Math.max(1, targetRecipe.getCraftYield()) : 1;
+            int inputsPerCraft = targetRecipe != null ? countNonNullSlots(targetRecipe.getCraftGrid()) : 1;
+            int already = countTargetInInventory(player, targetItem);
+            int stillNeeded = Math.max(1, targetGoalCount - already);
+            int craftsNeeded = (int) Math.ceil((double) stillNeeded / outputPerCraft);
+            int maxPerBatch = Math.max(1, 64 / Math.max(1, inputsPerCraft));
+            recipePlaceTarget = Math.min(craftsNeeded, maxPerBatch);
+            craftsRemaining = craftsNeeded - recipePlaceTarget;
+            recipePlaceCount = 0;
+            waitTicks = 0;
+            EmmaBridgeMod.LOGGER.info("[GOAP CraftItem] Batch plan: {} crafts this batch, {} remaining (yield={}, need={})",
+                    recipePlaceTarget, craftsRemaining, outputPerCraft, stillNeeded);
         }
 
-        // All slots filled — go to extract
-        phase = Phase.EXTRACT;
+        // Rate-limit: 1 call every 2 ticks (~10/sec)
+        if (++waitTicks < 2) return;
         waitTicks = 0;
+
+        client.gameMode.handlePlaceRecipe(handler.containerId, recipeDisplayId, false);
+        recipePlaceCount++;
+
+        if (recipePlaceCount >= recipePlaceTarget) {
+            recipePlaceTarget = 0;  // reset for next batch
+            phase = Phase.WAIT_RECIPE;
+            waitTicks = 0;
+        }
+    }
+
+    /**
+     * Wait for the server to process the recipe placement and populate the output slot.
+     * 40-tick timeout (2 seconds) — generous for server load + EndInv mixin processing.
+     */
+    private void tickWaitRecipe(Minecraft client, LocalPlayer player) {
+        var handler = player.containerMenu;
+        if (handler == null) {
+            phase = Phase.OPEN;
+            return;
+        }
+
+        // Check if output slot has items (server filled the grid)
+        if (OUTPUT_SLOT < handler.slots.size()) {
+            var outputStack = handler.slots.get(OUTPUT_SLOT).getItem();
+            if (!outputStack.isEmpty()) {
+                phase = Phase.EXTRACT;
+                waitTicks = 0;
+                return;
+            }
+        }
+
+        // Wait up to 40 ticks for server to process
+        if (++waitTicks > 40) {
+            EmmaBridgeMod.LOGGER.warn("[GOAP CraftItem] Recipe placement timeout for {}", targetItem);
+            phase = Phase.DONE;
+        }
     }
 
     private void tickExtract(Minecraft client, LocalPlayer player) {
@@ -553,27 +700,31 @@ public class CraftItemAction extends GoapAction {
             return;
         }
 
-        int outputSlot = usePlayerGrid ? PLAYER_OUTPUT : TABLE_OUTPUT;
-
         // Check if output slot has items
-        if (outputSlot < handler.slots.size()) {
-            var outputStack = handler.slots.get(outputSlot).getItem();
+        if (OUTPUT_SLOT < handler.slots.size()) {
+            var outputStack = handler.slots.get(OUTPUT_SLOT).getItem();
             if (!outputStack.isEmpty()) {
-                // Shift-click output to inventory
+                // Shift-click output to inventory (always works — EndInv ensures space)
                 client.gameMode.handleContainerInput(
-                        handler.containerId, outputSlot, 0, ContainerInput.QUICK_MOVE, player);
+                        handler.containerId, OUTPUT_SLOT, 0, ContainerInput.QUICK_MOVE, player);
                 extractCount++;
-                EmmaBridgeMod.LOGGER.info("[GOAP CraftItem] Extracted {} (attempt {})",
+                EmmaBridgeMod.LOGGER.info("[GOAP CraftItem] Extracted {} (batch {})",
                         targetItem, extractCount);
-                // Wait a tick for inventory update, then check if we need more
+                // Wait a tick for inventory update, then check if more output appeared
                 waitTicks = 0;
                 return;
             }
         }
 
-        // Output is empty — we're done (or something went wrong)
+        // Output is empty — check if more batches needed
         if (++waitTicks > 5) {
-            phase = Phase.DONE;
+            if (craftsRemaining > 0) {
+                // More batches to go — loop back to PLACE_RECIPE
+                phase = Phase.PLACE_RECIPE;
+                waitTicks = 0;
+            } else {
+                phase = Phase.DONE;
+            }
         }
     }
 
@@ -611,8 +762,10 @@ public class CraftItemAction extends GoapAction {
     private void tickCollectTable(Minecraft client, LocalPlayer player) {
         collectTicks++;
 
-        // Check if table is back in inventory
-        if (hasItemInInventory(player, Items.CRAFTING_TABLE)) {
+        // Check if table is back in inventory (pickup may go to endinv)
+        if (hasItemInInventory(player, Items.CRAFTING_TABLE)
+                || (cachedState != null && cachedState.endinvInventory
+                        .getOrDefault("minecraft:crafting_table", 0) > 0)) {
             crafting = false;
             phase = Phase.IDLE;
             return;
@@ -633,37 +786,63 @@ public class CraftItemAction extends GoapAction {
 
     // ── Helpers ──────────────────────────────────────────────────
 
-    /**
-     * Check if the player has enough of an item OR any tag-equivalent item.
-     * E.g., hasItemOrTagEquivalent(state, "minecraft:oak_planks", 4) returns true
-     * if player has 4 of ANY planks type.
-     */
-    private static boolean hasItemOrTagEquivalent(WorldState state, String itemId, int count) {
-        // Direct check first
-        if (state.hasItemInInventory(itemId, count)) return true;
-
-        // Check tag equivalents
-        String tagGroup = TagGroups.getItemTagGroup(itemId);
-        if (tagGroup == null) return false;
-
-        int total = 0;
-        for (String member : TagGroups.getGroupMembers(tagGroup)) {
-            String fullId = "minecraft:" + member;
-            total += state.playerInventory.getOrDefault(fullId, 0);
-            if (total >= count) return true;
-        }
-        return false;
-    }
-
     private boolean hasItemInInventory(LocalPlayer player, net.minecraft.world.item.Item item) {
         return InventoryScanner.hasItem(player.getInventory(), item);
     }
 
-    private boolean canCraftTable(LocalPlayer player) {
-        // Need 4 planks of any type
+    /** Check if we can access a crafting table for 3x3 recipes (scoring). */
+    private boolean hasCraftingTableAccess(WorldState state) {
+        // 1. Has a crafting table in any inventory scope
+        if (state.hasItem("minecraft:crafting_table", 1)) return true;
+        // 2. One is placed nearby
+        if (state.nearbyBlocks.containsKey("minecraft:crafting_table")) return true;
+        // 3. Has 4+ planks (or log-equivalent) to craft one (2x2 recipe, no table needed)
+        int planks = 0;
+        for (var entry : state.playerInventory.entrySet()) {
+            String key = entry.getKey();
+            if (key.contains("planks")) planks += entry.getValue();
+            else if (key.contains("_log") || key.contains("_wood")
+                    || key.equals("minecraft:bamboo_block")) {
+                planks += entry.getValue() * 4;  // each log → 4 planks via 2x2
+            }
+        }
+        for (var entry : state.endinvInventory.entrySet()) {
+            String key = entry.getKey();
+            if (key.contains("planks")) planks += entry.getValue();
+            else if (key.contains("_log") || key.contains("_wood")
+                    || key.equals("minecraft:bamboo_block")) {
+                planks += entry.getValue() * 4;
+            }
+        }
+        return planks >= 4;
+    }
+
+    /** Count non-null slots in a craft grid (= number of input items per craft). */
+    private static int countNonNullSlots(String[][] grid) {
+        if (grid == null) return 1;
+        int count = 0;
+        for (String[] slot : grid) {
+            if (slot != null && slot.length > 0) count++;
+        }
+        return Math.max(1, count);
+    }
+
+    /** Count how many of targetItem the player currently has in inventory + endinv. */
+    private int countTargetInInventory(LocalPlayer player, String targetItem) {
+        if (targetItem == null || cachedState == null) return 0;
+        return cachedState.totalItemCount(targetItem);
+    }
+
+    private boolean canCraftTable(LocalPlayer player, WorldState state) {
+        // Need 4 planks of any type — check player inv + endinv
         int plankCount = InventoryScanner.countItems(player.getInventory(),
                 stack -> net.minecraft.core.registries.BuiltInRegistries.ITEM
                         .getKey(stack.getItem()).toString().contains("planks"));
+        if (state != null) {
+            for (var entry : state.endinvInventory.entrySet()) {
+                if (entry.getKey().contains("planks")) plankCount += entry.getValue();
+            }
+        }
         return plankCount >= 4;
     }
 
@@ -672,21 +851,6 @@ public class CraftItemAction extends GoapAction {
     @Override
     public void onDeactivated(Minecraft client) {
         ScreenHelper.closeIfOpen(client);
-
-        // Clean up cursor if we got interrupted mid-click
-        if (client.player != null) {
-            var handler = client.player.containerMenu;
-            if (handler != null && !client.player.containerMenu.getCarried().isEmpty()) {
-                // Try to put cursor item back into inventory
-                for (int i = 0; i < handler.slots.size(); i++) {
-                    if (handler.slots.get(i).getItem().isEmpty()) {
-                        client.gameMode.handleContainerInput(
-                                handler.containerId, i, 0, ContainerInput.PICKUP, client.player);
-                        break;
-                    }
-                }
-            }
-        }
 
         // Cancel mine process or navigation
         if (phase == Phase.BREAK_TABLE) {
@@ -701,14 +865,23 @@ public class CraftItemAction extends GoapAction {
         targetGoalId = null;
         targetItem = null;
         targetRecipe = null;
+        recipeDisplayId = null;
+        cachedGoals = null;
         tablePos = null;
         usePlayerGrid = false;
         subCraftingTable = false;
         savedTargetItem = null;
         savedTargetRecipe = null;
+        savedRecipeDisplayId = null;
         placedTable = false;
+        jumpedForPlacement = false;
         breakTicks = 0;
         collectTicks = 0;
+        targetGoalCount = 1;
+        craftsRemaining = 0;
+        recipePlaceCount = 0;
+        recipePlaceTarget = 0;
+        originalGoalItem = null;
     }
 
     @Override
@@ -765,6 +938,9 @@ public class CraftItemAction extends GoapAction {
         bd.addProperty("use_player_grid", usePlayerGrid);
         if (targetRecipe != null) {
             bd.addProperty("recipe_method", targetRecipe.getObtainMethod().name());
+        }
+        if (recipeDisplayId != null) {
+            bd.addProperty("recipe_display_id", recipeDisplayId.index());
         }
         return bd;
     }

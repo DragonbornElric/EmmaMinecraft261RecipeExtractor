@@ -52,7 +52,7 @@ public class PlaceTorchAction extends GoapAction {
 
     @Override
     public boolean checkPreconditions(WorldState state) {
-        return enabled && countTorches() > 0 && state.lightLevel <= darkThreshold;
+        return enabled && countTorchesTotal(state) > 0 && state.lightLevel <= darkThreshold;
     }
 
     // ── Public accessors for TorchHandler ──────────────────────────
@@ -66,7 +66,7 @@ public class PlaceTorchAction extends GoapAction {
     @Override
     public float computeScore(WorldState state, GoalSet goals) {
         if (state.lightLevel > darkThreshold) return 0;
-        if (countTorches() <= 0) return 0;
+        if (countTorchesTotal(state) <= 0) return 0;
 
         float goalPriority = goals.getGoal("be_lit")
                 .map(g -> g.priority)
@@ -197,5 +197,13 @@ public class PlaceTorchAction extends GoapAction {
         if (client.player == null) return 0;
         return InventoryScanner.countItems(client.player.getInventory(),
                 stack -> stack.is(Items.TORCH) || stack.is(Items.SOUL_TORCH));
+    }
+
+    /** Count torches across player inventory + endinv (for scoring). */
+    private int countTorchesTotal(WorldState state) {
+        int count = countTorches();
+        count += state.endinvInventory.getOrDefault("minecraft:torch", 0);
+        count += state.endinvInventory.getOrDefault("minecraft:soul_torch", 0);
+        return count;
     }
 }

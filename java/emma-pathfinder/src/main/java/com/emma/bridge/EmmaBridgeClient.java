@@ -34,7 +34,6 @@ import com.emma.bridge.commands.InventoryHandler;
 import com.emma.bridge.commands.LookAtHandler;
 import com.emma.bridge.commands.MineHandler;
 import com.emma.bridge.commands.MountHandler;
-import com.emma.bridge.commands.OverflowHandler;
 import com.emma.bridge.commands.MoveItemHandler;
 import com.emma.bridge.commands.PlaceBlockHandler;
 import com.emma.bridge.commands.ReadScreenHandler;
@@ -64,14 +63,11 @@ import com.emma.bridge.goap.ActionRegistry;
 import com.emma.bridge.goap.GoapAction;
 import com.emma.bridge.goap.GoalSet;
 import com.emma.bridge.goap.GoapTicker;
-import com.emma.bridge.util.InventoryScanner;
 import com.emma.bridge.websocket.JsonProtocol;
 import com.emma.bridge.websocket.MessageHandler;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.minecraft.world.entity.player.Inventory;
-
 /**
  * Emma Bridge Mod — Client-side initializer.
  *
@@ -95,18 +91,9 @@ public class EmmaBridgeClient implements ClientModInitializer {
     private TravelLookOverride travelLookOverride;
     private PanicTeleport panicTeleport;
     private GoapTicker goapTicker;
+    private com.emma.bridge.goap.actions.BuildStructureAction buildStructureAction;
     private CameraTracker cameraTracker;
     private com.emma.bridge.events.ContainerTracker containerTracker;
-
-    // ── Proactive overflow management ──
-    /** Check interval in ticks (~5 seconds). */
-    private static final int OVERFLOW_CHECK_INTERVAL = 100;
-    /** Trigger overflow when free slots <= this threshold. */
-    private static final int OVERFLOW_FREE_THRESHOLD = 5;
-    /** Target number of free slots after overflow deposits. */
-    private static final int OVERFLOW_TARGET_FREE = 10;
-    private int overflowCheckTicks = 0;
-    private boolean overflowPending = false;
 
     @Override
     public void onInitializeClient() {
@@ -177,18 +164,6 @@ public class EmmaBridgeClient implements ClientModInitializer {
                 cameraTracker.tick();
             }
 
-            // Proactive overflow: deposit items when inventory gets full
-            // Only runs when GOAP is off — when GOAP is on, StoreItems handles storage
-            if (client.player != null && !overflowPending && !BridgeConfig.isGoapEnabled()) {
-                overflowCheckTicks++;
-                if (overflowCheckTicks >= OVERFLOW_CHECK_INTERVAL) {
-                    overflowCheckTicks = 0;
-                    int free = countFreeSlots(client.player.getInventory());
-                    if (free <= OVERFLOW_FREE_THRESHOLD) {
-                        tryProactiveOverflow(OVERFLOW_TARGET_FREE);
-                    }
-                }
-            }
         });
 
         EmmaBridgeMod.LOGGER.info("[Emma Bridge] Client initializer registered lifecycle hooks.");
@@ -219,7 +194,6 @@ public class EmmaBridgeClient implements ClientModInitializer {
                 router.registerPlayerHandler(new CancelHandler());
                 storageHandler = new StorageHandler();
                 router.registerPlayerHandler(storageHandler);
-                router.registerPlayerHandler(new OverflowHandler());
                 router.registerPlayerHandler(new ClearAreaHandler());
 
                 // Atomic action primitives (Phase 48)
@@ -273,6 +247,7 @@ public class EmmaBridgeClient implements ClientModInitializer {
                 actionRegistry.register(new com.emma.bridge.goap.actions.EntityInteractAction());
                 actionRegistry.register(new com.emma.bridge.goap.actions.TransformBlockAction());
                 actionRegistry.register(new com.emma.bridge.goap.actions.ExploreAction());
+                actionRegistry.register(new com.emma.bridge.goap.actions.EstablishBaseAction());
                 // Special-case pipeline actions (kill_dragon pipeline)
                 actionRegistry.register(new com.emma.bridge.goap.actions.BuildNetherPortalAction());
                 actionRegistry.register(new com.emma.bridge.goap.actions.EnterPortalAction());
@@ -280,6 +255,10 @@ public class EmmaBridgeClient implements ClientModInitializer {
                 actionRegistry.register(new com.emma.bridge.goap.actions.ActivateEndPortalAction());
                 actionRegistry.register(new com.emma.bridge.goap.actions.DestroyEndCrystalsAction());
                 actionRegistry.register(new com.emma.bridge.goap.actions.DragonCombatAction());
+                // Build as GOAP action
+                var buildPlanRegistry = new com.emma.bridge.goap.BuildPlanRegistry();
+                buildStructureAction = new com.emma.bridge.goap.actions.BuildStructureAction(buildPlanRegistry, goalSet);
+                actionRegistry.register(buildStructureAction);
 
                 goapTicker = new GoapTicker(goalSet, actionRegistry);
 
@@ -304,7 +283,11 @@ public class EmmaBridgeClient implements ClientModInitializer {
                 var portalRegistry = new com.emma.bridge.goap.PortalRegistry();
                 goapTicker.setPortalRegistry(portalRegistry);
 
-                // Wire PortalRegistry + WorldState to pipeline actions
+                // Base registry — persistent base location tracking
+                var baseRegistry = new com.emma.bridge.goap.BaseRegistry();
+                goapTicker.setBaseRegistry(baseRegistry);
+
+                // Wire PortalRegistry + BaseRegistry + WorldState to pipeline actions
                 var ws = goapTicker.getWorldState();
                 for (GoapAction action : actionRegistry.getAllActions()) {
                     if (action instanceof com.emma.bridge.goap.actions.BuildNetherPortalAction a) a.setPortalRegistry(portalRegistry);
@@ -312,6 +295,11 @@ public class EmmaBridgeClient implements ClientModInitializer {
                     if (action instanceof com.emma.bridge.goap.actions.LocateStrongholdAction a) a.setWorldState(ws);
                     if (action instanceof com.emma.bridge.goap.actions.ActivateEndPortalAction a) {
                         a.setPortalRegistry(portalRegistry);
+                        a.setWorldState(ws);
+                    }
+                    if (action instanceof com.emma.bridge.goap.actions.CollectFoodAction a) a.setBaseRegistry(baseRegistry);
+                    if (action instanceof com.emma.bridge.goap.actions.EstablishBaseAction a) {
+                        a.setBaseRegistry(baseRegistry);
                         a.setWorldState(ws);
                     }
                 }
@@ -322,9 +310,13 @@ public class EmmaBridgeClient implements ClientModInitializer {
                 router.registerPlayerHandler(new SetPersonalityHandler(goapTicker.getScorer()));
                 router.registerPlayerHandler(new SetModeHandler(goalSet, goapTicker, goapTicker.getScorer()));
                 router.registerPlayerHandler(new AgentDebugHandler(goapTicker));
+                router.registerPlayerHandler(new com.emma.bridge.commands.SetBuildGoalHandler(goalSet, goapTicker, buildPlanRegistry));
                 router.registerPlayerHandler(new TorchHandler(actionRegistry));
                 router.registerPlayerHandler(new com.emma.bridge.commands.SavePortalHandler(portalRegistry));
                 router.registerPlayerHandler(new com.emma.bridge.commands.GetPortalsHandler(portalRegistry));
+                router.registerPlayerHandler(new com.emma.bridge.commands.SetBaseHandler(baseRegistry));
+                router.registerPlayerHandler(new com.emma.bridge.commands.GetBasesHandler(baseRegistry));
+                router.registerPlayerHandler(new com.emma.bridge.commands.RemoveBaseHandler(baseRegistry));
                 if (BridgeConfig.isGoapEnabled()) {
                     goapTicker.setEnabled(true);
                 }
@@ -384,6 +376,16 @@ public class EmmaBridgeClient implements ClientModInitializer {
             bridgeServer = new BridgeServer(port, messageHandler);
             bridgeServer.start();
 
+            // Wire BridgeServer to BuildStructureAction for build_phase_complete events
+            if (buildStructureAction != null) {
+                buildStructureAction.setBridgeServer(bridgeServer);
+            }
+
+            // Wire BridgeServer to GoapTicker for goap_briefing events
+            if (goapTicker != null) {
+                goapTicker.setBridgeServer(bridgeServer);
+            }
+
             // Initialize event reporters (mode-aware — some depend on Emmatone)
             eventReporter = new EventReporter(bridgeServer);
             damageListener = new DamageListener();
@@ -418,40 +420,6 @@ public class EmmaBridgeClient implements ClientModInitializer {
 
         } catch (Exception e) {
             EmmaBridgeMod.LOGGER.error("[Emma Bridge] Failed to start bridge", e);
-        }
-    }
-
-    /** Count free slots in main inventory (slots 0-35). */
-    private static int countFreeSlots(Inventory inv) {
-        return InventoryScanner.emptySlots(inv);
-    }
-
-    /** Send a proactive free_slots request to the overflow server. */
-    private void tryProactiveOverflow(int targetFree) {
-        try {
-            if (!com.emma.overflow.OverflowClientMod.OverflowClientApi.isAvailable()) return;
-
-            com.google.gson.JsonObject req = new com.google.gson.JsonObject();
-            req.addProperty("action", "free_slots");
-            req.addProperty("target", targetFree);
-
-            // TODO: Rebuild junk/protected item lists without EmmaClef settings
-            com.google.gson.JsonArray junkList = new com.google.gson.JsonArray();
-            req.add("junk_items", junkList);
-
-            overflowPending = true;
-            com.emma.overflow.OverflowClientMod.OverflowClientApi.sendRequest(req)
-                    .whenComplete((result, ex) -> {
-                        overflowPending = false;
-                        if (result != null && result.has("slots_freed")) {
-                            int freed = result.get("slots_freed").getAsInt();
-                            if (freed > 0) {
-                                EmmaBridgeMod.LOGGER.info("[Emma Bridge] Proactive overflow freed {} slot(s)", freed);
-                            }
-                        }
-                    });
-        } catch (NoClassDefFoundError ignored) {
-            // Overflow mod not installed
         }
     }
 

@@ -1335,3 +1335,306 @@ def _bed_break_and_collect(client, bx: int, by: int, bz: int) -> dict:
     client.goto(bx, None, bz, timeout=5.0)
     time.sleep(0.5)
     return {"status": "ok", "collected": True, "from": {"x": bx, "y": by, "z": bz}}
+
+
+# ── GOAP Build Pipeline ─────────────────────────────────────────
+#
+# Orchestrates phased gather→build→resume for a build goal.
+# GOAP gathers materials, then Emmatone places blocks while GOAP
+# handles survival only, with automatic death recovery and resume.
+
+import threading
+from typing import Callable
+
+GATHER_POLL_INTERVAL = 5.0       # seconds between inventory polls
+GATHER_TIMEOUT_DEFAULT = 300.0   # 5 min per phase gather
+BUILD_TIMEOUT_DEFAULT = 600.0    # 10 min per phase build
+DEATH_RECOVERY_TIMEOUT = 60.0    # max wait for death recovery
+MAX_DEATH_RETRIES = 3            # deaths per phase before abort
+
+
+def build_pipeline(client, goal_id: int,
+                   callback: Callable[[str], None] | None = None,
+                   cancel_event: threading.Event | None = None) -> dict:
+    """Full gather→build→resume pipeline. Runs synchronously in a caller thread.
+
+    For each phase (Y-band):
+      1. GATHER: Compute phase BOM → diff vs inventory → add_goal("have_item")
+                 for each shortfall → poll until satisfied or timeout
+      2. BUILD:  set_build_mode(True) → build_structural(phase) → wait for
+                 task_complete/task_failed event → set_build_mode(False)
+      3. DEATH:  If task_failed(player_died) → wait for DeathRecoveryAction
+                 → retry same phase
+
+    Args:
+        client: Connected EmmatoneClient instance
+        goal_id: Build goal ID from build_goals table
+        callback: Optional function called with status messages
+        cancel_event: Optional threading.Event — set to cancel the pipeline
+    """
+    cancel = cancel_event or threading.Event()
+
+    def _log(msg: str):
+        log.info("[BuildPipeline] %s", msg)
+        if callback:
+            try:
+                callback(msg)
+            except Exception:
+                pass
+
+    if not client.connected:
+        return {"status": "error", "reason": "Emmatone not connected"}
+
+    # Load goal and plan phases
+    goal = client.build_db.get_goal(goal_id)
+    if not goal:
+        return {"status": "error", "reason": f"Goal {goal_id} not found"}
+
+    guide_id = goal.get("guide_id")
+    if not guide_id:
+        return {"status": "error", "reason": "Goal has no guide attached"}
+
+    guide = client.build_db.get_guide(guide_id)
+    if not guide:
+        return {"status": "error", "reason": f"Guide {guide_id} not found"}
+
+    # Move to current if planned
+    if goal["status"] in ("planned", "future"):
+        client.build_db.update_goal_status(goal_id, "current")
+
+    phases = client.build_db.split_into_phases(guide_id)
+    total_phases = len(phases)
+    _log(f"Starting pipeline for '{guide['name']}' — {total_phases} phases")
+
+    phases_completed = 0
+    total_placed = 0
+
+    for phase_idx, phase in enumerate(phases):
+        if cancel.is_set():
+            _log("Pipeline cancelled by user")
+            return {"status": "cancelled", "phases_completed": phases_completed,
+                    "total_placed": total_placed}
+
+        y_min, y_max = phase["y_min"], phase["y_max"]
+        _log(f"Phase {phase_idx + 1}/{total_phases} (Y {y_min}-{y_max})")
+
+        death_retries = 0
+
+        while death_retries <= MAX_DEATH_RETRIES:
+            if cancel.is_set():
+                _log("Pipeline cancelled by user")
+                return {"status": "cancelled", "phases_completed": phases_completed,
+                        "total_placed": total_placed}
+
+            # ── GATHER ──────────────────────────────────────
+            gather_ok = _pipeline_gather_phase(
+                client, goal_id, guide_id, phase_idx, phase, _log, cancel
+            )
+            if cancel.is_set():
+                return {"status": "cancelled", "phases_completed": phases_completed,
+                        "total_placed": total_placed}
+            if not gather_ok:
+                _log(f"Phase {phase_idx + 1}: gather timed out, proceeding with available materials")
+
+            # ── BUILD ───────────────────────────────────────
+            build_result = _pipeline_build_phase(
+                client, goal_id, phase_idx, _log, cancel
+            )
+            if cancel.is_set():
+                return {"status": "cancelled", "phases_completed": phases_completed,
+                        "total_placed": total_placed}
+
+            if build_result.get("death"):
+                death_retries += 1
+                _log(f"Death during phase {phase_idx + 1} (retry {death_retries}/{MAX_DEATH_RETRIES})")
+                _wait_for_death_recovery(client, _log, cancel)
+                if cancel.is_set():
+                    return {"status": "cancelled", "phases_completed": phases_completed,
+                            "total_placed": total_placed}
+                continue  # Retry same phase
+
+            if build_result.get("status") == "error":
+                _log(f"Phase {phase_idx + 1} failed: {build_result.get('reason')}")
+                return {"status": "error", "reason": build_result.get("reason"),
+                        "phases_completed": phases_completed, "total_placed": total_placed}
+
+            total_placed += build_result.get("placed", 0)
+            phases_completed += 1
+            _log(f"Phase {phase_idx + 1} complete — {build_result.get('placed', 0)} blocks placed")
+            break  # Success, move to next phase
+        else:
+            _log(f"Phase {phase_idx + 1}: max death retries exceeded, aborting")
+            return {"status": "error", "reason": "Max death retries exceeded",
+                    "phases_completed": phases_completed, "total_placed": total_placed}
+
+    # Mark goal as completed
+    try:
+        client.build_db.update_goal_status(goal_id, "completed")
+    except Exception:
+        pass
+
+    _log(f"Pipeline complete! {phases_completed} phases, {total_placed} blocks placed")
+    return {"status": "ok", "phases_completed": phases_completed,
+            "total_placed": total_placed, "total_phases": total_phases}
+
+
+def _pipeline_gather_phase(client, goal_id: int, guide_id: int,
+                           phase_idx: int, phase: dict,
+                           _log: Callable, cancel: threading.Event) -> bool:
+    """Add GOAP goals for missing materials, poll until satisfied or timeout."""
+    from gamer import config as _cfg
+    build_cfg = _cfg.get("build", {}) or {}
+    timeout = build_cfg.get("gather_timeout_seconds", GATHER_TIMEOUT_DEFAULT)
+
+    # Compute phase BOM
+    band_blocks = client.build_db.get_blocks_for_y_range(
+        guide_id, phase["y_min"], phase["y_max"]
+    )
+    block_bom: dict[str, int] = {}
+    for b in band_blocks:
+        bt = b["block_type"]
+        block_bom[bt] = block_bom.get(bt, 0) + 1
+    item_bom = _aggregate_bom_as_items(block_bom)
+
+    # Diff vs inventory
+    inv = client.inventory_counts
+    shortfall: dict[str, int] = {}
+    for item, needed in item_bom.items():
+        have = inv.get(item, 0)
+        if have < needed:
+            shortfall[item] = needed - have
+
+    if not shortfall:
+        _log(f"  Gather: all materials available for phase {phase_idx + 1}")
+        return True
+
+    _log(f"  Gather: {len(shortfall)} items needed — adding GOAP goals")
+
+    # Add gather goals
+    goal_ids = []
+    for item, qty in shortfall.items():
+        gid = f"build_gather_{item}"
+        goal_ids.append(gid)
+        try:
+            client.add_goal(
+                gid,
+                goal_type="have_item",
+                priority=12.0,
+                target={"item": f"minecraft:{item}", "count": qty}
+            )
+        except Exception as exc:
+            _log(f"  Warning: failed to add goal for {item}: {exc}")
+
+    # Poll until satisfied or timeout
+    start = time.monotonic()
+    satisfied = False
+    while not cancel.is_set() and (time.monotonic() - start) < timeout:
+        cancel.wait(GATHER_POLL_INTERVAL)
+        if cancel.is_set():
+            break
+
+        inv = client.inventory_counts
+        all_met = True
+        for item, needed in item_bom.items():
+            if inv.get(item, 0) < needed:
+                all_met = False
+                break
+
+        if all_met:
+            satisfied = True
+            _log(f"  Gather: all materials acquired ({time.monotonic() - start:.0f}s)")
+            break
+
+    # Clean up gather goals
+    for gid in goal_ids:
+        try:
+            client.remove_goal(gid)
+        except Exception:
+            pass
+
+    return satisfied
+
+
+def _pipeline_build_phase(client, goal_id: int, phase_idx: int,
+                          _log: Callable, cancel: threading.Event) -> dict:
+    """Enable build mode, run build_structural for one phase, wait for completion."""
+    from gamer import config as _cfg
+    build_cfg = _cfg.get("build", {}) or {}
+    timeout = build_cfg.get("build_timeout_seconds", BUILD_TIMEOUT_DEFAULT)
+
+    # Set up event listener for task_complete/task_failed
+    done_event = threading.Event()
+    result_holder = {"event": None, "data": None}
+
+    def on_task_complete(data):
+        result_holder["event"] = "task_complete"
+        result_holder["data"] = data
+        done_event.set()
+
+    def on_task_failed(data):
+        result_holder["event"] = "task_failed"
+        result_holder["data"] = data
+        done_event.set()
+
+    client.on("task_complete", on_task_complete)
+    client.on("task_failed", on_task_failed)
+
+    try:
+        # Start the phase build
+        _log(f"  Build: starting phase {phase_idx + 1}")
+        build_result = build_structural(client, goal_id, phase_index=phase_idx)
+
+        if build_result.get("status") == "error":
+            return build_result
+        if build_result.get("status") == "already_complete":
+            _log(f"  Build: phase {phase_idx + 1} already complete")
+            return {"status": "ok", "placed": build_result.get("placed", 0)}
+
+        # Wait for build completion event
+        start = time.monotonic()
+        while not cancel.is_set() and not done_event.is_set():
+            remaining_time = timeout - (time.monotonic() - start)
+            if remaining_time <= 0:
+                _log(f"  Build: phase {phase_idx + 1} timed out")
+                return {"status": "ok", "placed": build_result.get("placed", 0)}
+            done_event.wait(min(5.0, remaining_time))
+
+        if cancel.is_set():
+            return {"status": "cancelled"}
+
+        # Check result
+        if result_holder["event"] == "task_failed":
+            data = result_holder["data"] or {}
+            reason = data.get("reason", "")
+            if "died" in str(reason).lower() or "death" in str(reason).lower():
+                return {"status": "death", "death": True, "reason": reason}
+            return {"status": "error", "reason": reason}
+
+        placed = build_result.get("total", 0) - build_result.get("remaining", 0)
+        return {"status": "ok", "placed": placed}
+
+    finally:
+        # Always clean up
+        client.off("task_complete", on_task_complete)
+        client.off("task_failed", on_task_failed)
+        client._idle_suppressed = False
+
+
+def _wait_for_death_recovery(client, _log: Callable, cancel: threading.Event):
+    """Wait for the player to respawn and DeathRecoveryAction to finish."""
+    _log("  Waiting for death recovery...")
+    start = time.monotonic()
+    while not cancel.is_set() and (time.monotonic() - start) < DEATH_RECOVERY_TIMEOUT:
+        cancel.wait(3.0)
+        if cancel.is_set():
+            return
+        try:
+            debug = client.goap_debug()
+            active_action = debug.get("active_action", "")
+            # Recovery done when we're alive and not in DeathRecovery
+            if active_action and "DeathRecovery" not in active_action:
+                _log("  Death recovery complete")
+                return
+        except Exception:
+            pass
+    _log("  Death recovery timed out")

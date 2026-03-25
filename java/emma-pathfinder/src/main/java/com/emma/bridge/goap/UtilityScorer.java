@@ -396,6 +396,19 @@ public class UtilityScorer {
         noProgressTicks = 0;
     }
 
+    /**
+     * Reset stall tracking — called when an action self-deactivates and is
+     * immediately re-executed (e.g., CraftItem finishing one recipe and starting the next).
+     * Gives the fresh execution a clean grace period.
+     */
+    public void resetStallTracking(WorldState state) {
+        noProgressTicks = 0;
+        lastProgressX = state.posX;
+        lastProgressY = state.posY;
+        lastProgressZ = state.posZ;
+        lastProgressInvHash = state.playerInventory.hashCode();
+    }
+
     public String getCurrentActiveAction() {
         return currentActiveAction;
     }
