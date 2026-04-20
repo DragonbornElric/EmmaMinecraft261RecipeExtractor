@@ -1,0 +1,20 @@
+# Java / Gradle
+emma_extracted_recipes*.json
+java/emma-recipe-extractor/.gradle/
+java/emma-recipe-extractor/bin/
+java/emma-recipe-extractor/build/
+java/emma-recipe-extractor/run/
+java/dist/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local Claude config
+.claude/settings.local.json
+**/claude.local.md
