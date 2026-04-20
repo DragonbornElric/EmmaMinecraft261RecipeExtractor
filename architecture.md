@@ -755,10 +755,13 @@ Output: `emma-bridge-mod-0.2.0.jar` (~1MB, includes bundled Emmatone pathfinder)
 Output: `emma-overflow-0.1.0.jar` — Virtual inventory overflow storage + item
 destruction. Provides the C2S/S2C protocol for deposit/withdraw/trash operations.
 
-### emma-gameplay-logger
+### emma-gameplay-logger (external repo)
 
-Output: `emma-gameplay-logger-0.1.0.jar` — Server-side event logger. Records block
-placement, combat, food consumption, equipment changes to JSONL session files.
+Former local output: `emma-gameplay-logger-0.1.0.jar` — Server-side event logger.
+Records block placement, combat, food consumption, equipment changes to JSONL
+session files.
+
+This module now lives in a separate repository: `https://github.com/DragonbornElric/EmmaMinecraft261Logger`
 
 Commands: `/logger start <player>`, `/logger stop <player>`, `/logger status`
 

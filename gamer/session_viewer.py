@@ -1,5 +1,6 @@
 """
-Session Viewer — CLI timeline viewer for emma-gameplay-logger sessions.
+Session Viewer — CLI timeline viewer for sessions emitted by the external
+emma-gameplay-logger mod.
 
 Displays a visual timeline of gameplay phases, event counts, and key stats.
 

@@ -168,7 +168,9 @@ Captured every tick by GoapTicker via `END_CLIENT_TICK`:
 
 ---
 
-## 2. emma-gameplay-logger
+## 2. emma-gameplay-logger (external repo)
+
+Note: `emma-gameplay-logger` has since moved to its own repository: `https://github.com/DragonbornElric/EmmaMinecraft261Logger`
 
 ### Fabric API Callbacks
 
@@ -464,7 +466,7 @@ None.
 | Mod | Count | Heaviest Categories |
 |-----|-------|---------------------|
 | emma-pathfinder | 9 | Client ticks, chunk events, player actions |
-| emma-gameplay-logger | 6 | Server ticks, connection events, block events |
+| emma-gameplay-logger (external repo) | 6 | Server ticks, connection events, block events |
 | emma-endinv | 22+ | Attachments, networking (13 payloads), screen/input events |
 | emma-twitch (external repo) | 2 | Server lifecycle only |
 | emma-recipe-extractor | 1 | Command registration only |
@@ -474,7 +476,7 @@ None.
 | Mod | Count | Targets |
 |-----|-------|---------|
 | emma-pathfinder | ~37 | Client tick, block interaction, packets, chunk cache |
-| emma-gameplay-logger | 5 | Chat, damage, death, consumption, containers |
+| emma-gameplay-logger (external repo) | 5 | Chat, damage, death, consumption, containers |
 | emma-endinv | 11 | Block drops, item pickup, screens, recipes, XP |
 | emma-twitch (external repo) | 0 | (via CrowdControl library) |
 | emma-recipe-extractor | 0 | — |
@@ -494,7 +496,7 @@ None.
 
 | Command | Mod | Side |
 |---------|-----|------|
-| `/logger start/stop/startall/status` | emma-gameplay-logger | Server |
+| `/logger start/stop/startall/status` | emma-gameplay-logger (external repo) | Server |
 | `/endinv` | emma-endinv | Server |
 | `/config` | emma-endinv | Server |
 | `/emma_extract` | emma-recipe-extractor | Server (op) |

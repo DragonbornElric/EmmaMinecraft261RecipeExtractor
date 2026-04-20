@@ -66,10 +66,10 @@ emma-pathfinder (Java Fabric mod)
 | Mod | Purpose |
 |-----|---------|
 | `emma-pathfinder/` | **Main mod** — Emmatone + WebSocket bridge + GOAP. Output: `emma-bridge-mod-0.2.0.jar` |
-| `emma-gameplay-logger/` | Gameplay event logger. Output: `emma-gameplay-logger-0.1.0.jar` |
 | `emma-endinv/` | Endless Inventory (RPG-style infinite storage). Output: `emma-endinv-1.2.0.jar` |
 | `emma-recipe-extractor/` | One-shot recipe/drop/item data extraction (`/emma_extract`). Output: `emma-recipe-extractor-0.1.0.jar` |
 
+Gameplay logger now lives in a separate repository: `https://github.com/DragonbornElric/EmmaMinecraft261Logger`
 Twitch integration now lives in a separate repository: `https://github.com/DragonbornElric/emmaminecraft261twitch`
 
 ### Build & Deploy

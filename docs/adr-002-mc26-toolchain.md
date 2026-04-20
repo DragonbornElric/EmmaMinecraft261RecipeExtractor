@@ -8,6 +8,12 @@ Accepted
 
 2026-03-16
 
+## Note
+
+This ADR records the MC 26.1 migration decision made while
+`emma-gameplay-logger` was still part of this monorepo. The logger now lives
+in a separate repository: `https://github.com/DragonbornElric/EmmaMinecraft261Logger`
+
 ## Context
 
 MC 26.1 Pre-Release 2 (2026-03-13) ships with unobfuscated source — Minecraft
@@ -26,7 +32,7 @@ Our project currently targets MC 1.21.8 with:
 - Java 21 (source/target)
 - Fabric Loom 1.14-SNAPSHOT
 - Mixed mapping strategy: emma-pathfinder uses Mojang official mappings,
-  emma-overflow and emma-gameplay-logger use Yarn mappings
+  emma-overflow and the then-local emma-gameplay-logger use Yarn mappings
 - Fabric Loader 0.18.4, Fabric API 0.136.1+1.21.8
 
 ## Decision
@@ -46,7 +52,7 @@ Our project currently targets MC 1.21.8 with:
 - **emma-pathfinder:** Keep `loom.officialMojangMappings()`. On MC 26.1 this
   resolves to identity (source is already unobfuscated). No code changes needed
   for the mapping layer itself.
-- **emma-overflow & emma-gameplay-logger:** Switch from Yarn to
+- **emma-overflow & the then-local emma-gameplay-logger:** Switch from Yarn to
   `loom.officialMojangMappings()`. This requires rewriting all MC API imports
   and method names from Yarn conventions to Mojang conventions. The Mojang names
   are now the actual source names.
@@ -60,8 +66,8 @@ All mixin configs update `compatibilityLevel` from `JAVA_21` to `JAVA_25`.
 ## Consequences
 
 - **Yarn→Mojang migration:** emma-overflow (4 source files, ~42 MC API usages in
-  heaviest file) and emma-gameplay-logger (15 source files, 5 mixins) need full
-  import/method renaming.
+  heaviest file) and the then-local emma-gameplay-logger (15 source files,
+  5 mixins) need full import/method renaming.
 - **Unified naming:** After migration, all three mods use identical MC API names.
   No more Yarn/Mojang translation when reading across modules.
 - **Emmatone mixins:** 20 mixins target precise bytecode positions. MC 26.1's

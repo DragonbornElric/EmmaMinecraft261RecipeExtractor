@@ -1,16 +1,17 @@
 #!/bin/bash
-# Build emma-bridge (Emmatone pathfinder + bridge mod) + logger mod + endinv mod, then deploy.
+# Build emma-bridge (Emmatone pathfinder + bridge mod) + endinv mod, then deploy.
 #
 # Usage:
 #   ./build_and_deploy.sh                    # build all + deploy all (local only)
-#   ./build_and_deploy.sh --bridge           # build + deploy bridge only (skip logger/endinv)
-#   ./build_and_deploy.sh --logger           # build + deploy logger only
+#   ./build_and_deploy.sh --bridge           # build + deploy bridge only (skip endinv)
 #   ./build_and_deploy.sh --endinv           # build + deploy endless inventory only to all configured client instances
 #   ./build_and_deploy.sh --recipe-extractor # build + deploy recipe extractor only (server, on-demand)
 #   ./build_and_deploy.sh --server           # build all + deploy all + deploy to server + restart
 #   ./build_and_deploy.sh --bridge --server  # bridge + server deploy + restart
 #
 # IMPORTANT: Shut down Minecraft before running this script to avoid file lock issues.
+# Gameplay logger now lives in a separate repository:
+# https://github.com/DragonbornElric/EmmaMinecraft261Logger
 # Twitch integration now lives in a separate repository:
 # https://github.com/DragonbornElric/emmaminecraft261twitch
 
@@ -18,13 +19,11 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BRIDGE_DIR="$SCRIPT_DIR/emma-pathfinder"
-LOGGER_DIR="$SCRIPT_DIR/emma-gameplay-logger"
 ENDINV_DIR="$SCRIPT_DIR/emma-endinv"
 RECIPE_DIR="$SCRIPT_DIR/emma-recipe-extractor"
 DIST_DIR="$SCRIPT_DIR/dist"
 
 BRIDGE_JAR="emma-bridge-mod-0.2.0.jar"
-LOGGER_JAR="emma-gameplay-logger-0.1.0.jar"
 ENDINV_JAR="emma-endinv-1.2.0.jar"
 RECIPE_JAR="emma-recipe-extractor-0.1.0.jar"
 
@@ -81,14 +80,16 @@ SERVER_USER="emmaserver"
 SERVER_MODS="/var/opt/crafty/servers/EmmaServer/mods"
 
 BRIDGE_ONLY=false
-LOGGER_ONLY=false
 ENDINV_ONLY=false
 RECIPE_ONLY=false
 DEPLOY_SERVER=false
 for arg in "$@"; do
     case "$arg" in
         --bridge) BRIDGE_ONLY=true ;;
-        --logger) LOGGER_ONLY=true ;;
+        --logger)
+            echo "emma-gameplay-logger moved to https://github.com/DragonbornElric/EmmaMinecraft261Logger" >&2
+            exit 1
+            ;;
         --twitch)
             echo "emma-twitch moved to https://github.com/DragonbornElric/emmaminecraft261twitch" >&2
             exit 1
@@ -101,27 +102,6 @@ done
 
 # Create dist directory for easy access to all built JARs
 mkdir -p "$DIST_DIR"
-
-# --- Logger-only mode: just build + deploy logger ---
-if [[ "$LOGGER_ONLY" == true ]]; then
-    echo "=== Building emma-gameplay-logger ==="
-    cd "$LOGGER_DIR"
-    ./gradlew.bat build 2>&1 | grep -v "^Note:" | grep -v "not valid semver" | grep -v "\[Incubating\]" | grep -v "problems-report"
-    cp "$LOGGER_DIR/build/libs/$LOGGER_JAR" "$DIST_DIR/$LOGGER_JAR"
-    echo "  dist: $LOGGER_JAR"
-
-    # Deploy to server if requested
-    if [[ "$DEPLOY_SERVER" == true ]]; then
-        echo "=== Deploying logger to server at $SERVER_HOST ==="
-        scp "$DIST_DIR/$LOGGER_JAR" "$SERVER_USER@$SERVER_HOST:$SERVER_MODS/$LOGGER_JAR"
-        echo "  Server: deployed $LOGGER_JAR"
-        echo "  NOTE: Restart the server via Crafty web UI to load new mods"
-    fi
-
-    echo ""
-    echo "=== Done — JAR at: dist/$LOGGER_JAR ==="
-    exit 0
-fi
 
 # --- Endinv-only mode: just build + deploy endless inventory ---
 if [[ "$ENDINV_ONLY" == true ]]; then
@@ -195,15 +175,7 @@ cd "$BRIDGE_DIR"
 ./gradlew.bat build 2>&1 | grep -v "^Note:" | grep -v "not valid semver" | grep -v "\[Incubating\]" | grep -v "problems-report"
 echo ""
 
-# --- Step 2: Build emma-gameplay-logger (unless --bridge) ---
-if [[ "$BRIDGE_ONLY" == false ]]; then
-    echo "=== Building emma-gameplay-logger ==="
-    cd "$LOGGER_DIR"
-    ./gradlew.bat build 2>&1 | grep -v "^Note:" | grep -v "not valid semver" | grep -v "\[Incubating\]" | grep -v "problems-report"
-    echo ""
-fi
-
-# --- Step 2b: Build emma-endinv (unless --bridge) ---
+# --- Step 2: Build emma-endinv (unless --bridge) ---
 if [[ "$BRIDGE_ONLY" == false ]]; then
     echo "=== Building emma-endinv ==="
     cd "$ENDINV_DIR"
@@ -215,7 +187,6 @@ fi
 echo "=== Copying JARs to dist/ ==="
 cp "$BRIDGE_DIR/build/libs/$BRIDGE_JAR" "$DIST_DIR/$BRIDGE_JAR"
 if [[ "$BRIDGE_ONLY" == false ]]; then
-    cp "$LOGGER_DIR/build/libs/$LOGGER_JAR" "$DIST_DIR/$LOGGER_JAR"
     cp "$ENDINV_DIR/build/libs/$ENDINV_JAR" "$DIST_DIR/$ENDINV_JAR"
 fi
 echo "  All JARs copied to dist/"

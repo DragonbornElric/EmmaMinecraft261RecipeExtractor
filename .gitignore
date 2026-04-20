@@ -13,8 +13,6 @@ java/emma-pathfinder/build/
 java/emma-pathfinder/.gradle/
 java/emma-overflow/build/
 java/emma-overflow/.gradle/
-java/emma-gameplay-logger/build/
-java/emma-gameplay-logger/.gradle/
 java/emma-endinv/build/
 java/emma-endinv/.gradle/
 java/emma-recipe-extractor/build/

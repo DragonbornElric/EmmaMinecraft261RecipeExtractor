@@ -1,5 +1,6 @@
 """
-Gameplay Analyzer — Post-processor for emma-gameplay-logger session data.
+Gameplay Analyzer — Post-processor for session data emitted by the external
+emma-gameplay-logger mod.
 
 Reads JSONL session files (state_stream + event_stream), aligns them by tick,
 detects gameplay phases automatically, extracts decision-inference signals,
