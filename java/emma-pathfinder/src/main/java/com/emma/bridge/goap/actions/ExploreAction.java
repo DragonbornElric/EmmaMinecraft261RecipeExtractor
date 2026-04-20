@@ -1,5 +1,6 @@
 package com.emma.bridge.goap.actions;
 
+import com.emma.bridge.EmmaBridgeMod;
 import com.emma.bridge.catalogue.ItemRecipeEntry;
 import com.emma.bridge.catalogue.ItemRecipeRegistry;
 import com.emma.bridge.catalogue.ObtainMethod;
@@ -32,13 +33,14 @@ import java.util.Random;
 public class ExploreAction extends GoapAction {
 
     private static final Random random = new Random();
-    private static final int EXPLORE_TIMEOUT_TICKS = 400; // 20 seconds
+    private static final int EXPLORE_TIMEOUT_TICKS = 800; // 40 seconds — needs to be long enough for ocean crossings
 
     private boolean exploring = false;
     private String targetGoalId = null;
     private BlockPos targetPos = null;
     private int exploreTicks = 0;
     private boolean needsUndergroundOre = false;
+    private boolean lowFoodSuppressedLogged = false;
 
     @Override
     public String getName() {
@@ -54,6 +56,23 @@ public class ExploreAction extends GoapAction {
 
     @Override
     public float computeScore(WorldState state, GoalSet goals) {
+        // Never spend cycles exploring for progression resources while in a
+        // low-food emergency. CollectFood/NavigateTo must take control first.
+        if (state.foodItemCount < CollectFoodAction.LOW_FOOD_THRESHOLD) {
+            if (!lowFoodSuppressedLogged) {
+                EmmaBridgeMod.LOGGER.info(
+                        "[Explore] Suppressed: low food emergency ({}/{})",
+                        state.foodItemCount,
+                        CollectFoodAction.LOW_FOOD_THRESHOLD);
+                lowFoodSuppressedLogged = true;
+            }
+            return 0f;
+        }
+        if (lowFoodSuppressedLogged) {
+            EmmaBridgeMod.LOGGER.info("[Explore] Re-enabled: food emergency cleared ({})", state.foodItemCount);
+            lowFoodSuppressedLogged = false;
+        }
+
         float bestScore = 0;
         needsUndergroundOre = false;
 
@@ -102,7 +121,7 @@ public class ExploreAction extends GoapAction {
 
         exploreTicks++;
 
-        switch (GoapNavHelper.tickNavigateToBlock(player, targetPos, exploreTicks)) {
+        switch (GoapNavHelper.tickNavigateToBlock(player, targetPos, exploreTicks, EXPLORE_TIMEOUT_TICKS, 3.0)) {
             case ARRIVED -> {
                 // Arrived at target — pick a new random direction and keep exploring
                 targetPos = generateRandomTarget(player);
@@ -131,6 +150,7 @@ public class ExploreAction extends GoapAction {
         targetGoalId = null;
         targetPos = null;
         needsUndergroundOre = false;
+        lowFoodSuppressedLogged = false;
     }
 
     @Override

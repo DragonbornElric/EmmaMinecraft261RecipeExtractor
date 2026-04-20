@@ -3,6 +3,7 @@ package com.emma.bridge.goap.actions;
 import emmatone.api.EmmatoneAPI;
 import emmatone.api.pathing.goals.GoalBlock;
 import emmatone.api.process.ICustomGoalProcess;
+import com.emma.bridge.EmmaBridgeMod;
 import com.emma.bridge.goap.GoapAction;
 import com.emma.bridge.goap.GoalSet;
 import com.emma.bridge.goap.WorldState;
@@ -23,6 +24,8 @@ public class NavigateToAction extends GoapAction {
 
     /** Don't navigate to positions closer than this (blocks). */
     private static final float MIN_DISTANCE = 3.0f;
+    /** Strong score floor for emergency food-navigation goals. */
+    private static final float FOOD_NAV_MIN_SCORE = 4.0f;
 
     private boolean navigating = false;
     private String targetGoalId = null;
@@ -50,6 +53,17 @@ public class NavigateToAction extends GoapAction {
 
         if (distance < MIN_DISTANCE) return 0;
 
+        boolean foodEmergencyNav = targetGoalId != null && targetGoalId.startsWith("food_");
+
+        if (foodEmergencyNav) {
+            // Keep food-recovery navigation competitive even over long distances,
+            // otherwise Explore can steal control and cause aimless wandering.
+            float urgency = state.foodItemCount <= 0 ? 1.35f : 1.15f;
+            float proximityFactor = 1.0f / (1.0f + (float) distance / 64.0f);
+            float score = target.priority * urgency * proximityFactor;
+            return Math.max(FOOD_NAV_MIN_SCORE, score);
+        }
+
         // Proximity factor: nearby targets score higher
         float proximityFactor = 1.0f / (1.0f + (float) distance / 16.0f);
 
@@ -59,6 +73,21 @@ public class NavigateToAction extends GoapAction {
     @Override
     public void execute(Minecraft client) {
         if (targetGoalId == null) return;
+
+        boolean foodEmergencyNav = targetGoalId.startsWith("food_");
+        if (foodEmergencyNav && client.player != null) {
+            double dx = targetX - client.player.getX();
+            double dy = targetY - client.player.getY();
+            double dz = targetZ - client.player.getZ();
+            double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            EmmaBridgeMod.LOGGER.info(
+                    "[NavigateTo] Food emergency nav engaged: goal={} target=({},{},{}) dist={}",
+                    targetGoalId,
+                    targetX,
+                    targetY,
+                    targetZ,
+                    String.format("%.1f", dist));
+        }
 
         ICustomGoalProcess goalProcess = EmmatoneAPI.getProvider()
                 .getPrimaryEmmatone()
@@ -126,6 +155,7 @@ public class NavigateToAction extends GoapAction {
             bd.addProperty("target_x", targetX);
             bd.addProperty("target_y", targetY);
             bd.addProperty("target_z", targetZ);
+            bd.addProperty("food_emergency_nav", targetGoalId.startsWith("food_"));
         }
 
         try {
