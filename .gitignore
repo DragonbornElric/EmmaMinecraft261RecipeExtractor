@@ -1,10 +1,12 @@
 # Java / Gradle
 emma_extracted_recipes*.json
+!emma_extracted_recipes_26.1.json
 java/emma-recipe-extractor/.gradle/
 java/emma-recipe-extractor/bin/
 java/emma-recipe-extractor/build/
 java/emma-recipe-extractor/run/
-java/dist/
+java/dist/*
+!java/dist/*.jar
 
 # IDE
 .idea/

@@ -3,17 +3,17 @@
 	"id": "emma-recipe-extractor",
 	"version": "${version}",
 	"name": "Emma Recipe Extractor",
-	"description": "One-shot extraction of all recipe, block drop, mob drop, and item property data. Load once per MC version, run /emma_extract, then remove.",
+	"description": "Server-only one-shot extraction of all recipe, block drop, mob drop, and item property data. Load once per MC version, run /emma_extract, then remove.",
 	"authors": ["Emma AI Project"],
 	"contact": {},
-	"license": "MIT",
+	"license": "0BSD",
 	"environment": "server",
 	"entrypoints": {
 		"server": ["com.emma.recipeextractor.RecipeExtractorMod"]
 	},
 	"depends": {
-		"fabricloader": ">=0.18.4",
-		"minecraft": ">=26.1",
+		"fabricloader": ">=0.19.2",
+		"minecraft": ">=26.1.2",
 		"java": ">=25",
 		"fabric-api": "*"
 	}

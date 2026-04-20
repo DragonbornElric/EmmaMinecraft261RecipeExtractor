@@ -3,9 +3,37 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 RECIPE_DIR="$SCRIPT_DIR/emma-recipe-extractor"
 DIST_DIR="$SCRIPT_DIR/dist"
-RECIPE_JAR="emma-recipe-extractor-0.1.0.jar"
+
+gradle_property() {
+    local key="$1"
+    grep -E "^${key}=" "$RECIPE_DIR/gradle.properties" | head -n 1 | cut -d '=' -f 2- | tr -d '\r'
+}
+
+ARCHIVES_BASE_NAME="$(gradle_property archives_base_name)"
+MINECRAFT_VERSION="$(gradle_property minecraft_version)"
+LOADER_VERSION="$(gradle_property loader_version)"
+MOD_VERSION="$(gradle_property mod_version)"
+RECIPE_JAR="${ARCHIVES_BASE_NAME}-mc${MINECRAFT_VERSION}-fabric-loader${LOADER_VERSION}-${MOD_VERSION}.jar"
+
+if [[ -n "${EMMA_RECIPE_EXTRACTOR_PROJECT_CACHE_DIR:-}" ]]; then
+    PROJECT_CACHE_DIR="$EMMA_RECIPE_EXTRACTOR_PROJECT_CACHE_DIR"
+elif [[ -n "${TMPDIR:-}" ]]; then
+    PROJECT_CACHE_DIR="${TMPDIR%/}/emma-recipe-extractor-gradle-cache"
+elif [[ -n "${TEMP:-}" ]]; then
+    PROJECT_CACHE_DIR="${TEMP%/}/emma-recipe-extractor-gradle-cache"
+elif [[ -n "${TMP:-}" ]]; then
+    PROJECT_CACHE_DIR="${TMP%/}/emma-recipe-extractor-gradle-cache"
+else
+    PROJECT_CACHE_DIR="/tmp/emma-recipe-extractor-gradle-cache"
+fi
+
+ISOLATED_BUILD_ROOT="$PROJECT_CACHE_DIR/workspace"
+ISOLATED_RECIPE_DIR="$ISOLATED_BUILD_ROOT/java/emma-recipe-extractor"
+GRADLE_USER_HOME_DIR="$PROJECT_CACHE_DIR/gradle-user-home"
+BUILD_RECIPE_DIR="$RECIPE_DIR"
 
 DEPLOY_SERVER=false
 LOCAL_MODS_DIR=""
@@ -91,20 +119,35 @@ require_java_25() {
     fi
 }
 
+prepare_isolated_workspace() {
+    rm -rf "$ISOLATED_BUILD_ROOT"
+    mkdir -p "$ISOLATED_BUILD_ROOT/java"
+    cp "$REPO_ROOT/LICENSE" "$ISOLATED_BUILD_ROOT/LICENSE"
+    cp -R "$RECIPE_DIR" "$ISOLATED_BUILD_ROOT/java/"
+    rm -rf \
+        "$ISOLATED_RECIPE_DIR/.gradle" \
+        "$ISOLATED_RECIPE_DIR/bin" \
+        "$ISOLATED_RECIPE_DIR/build" \
+        "$ISOLATED_RECIPE_DIR/run"
+    BUILD_RECIPE_DIR="$ISOLATED_RECIPE_DIR"
+}
+
 run_gradle_build() {
     echo "=== Building emma-recipe-extractor ==="
     require_java_25
-    cd "$RECIPE_DIR"
+    mkdir -p "$PROJECT_CACHE_DIR" "$GRADLE_USER_HOME_DIR"
+    prepare_isolated_workspace
+    cd "$BUILD_RECIPE_DIR"
     if [[ "${OS:-}" == "Windows_NT" ]]; then
-        ./gradlew.bat build
+        GRADLE_USER_HOME="$GRADLE_USER_HOME_DIR" ./gradlew.bat --project-cache-dir "$PROJECT_CACHE_DIR/project-cache" build
     else
-        ./gradlew build
+        GRADLE_USER_HOME="$GRADLE_USER_HOME_DIR" ./gradlew --project-cache-dir "$PROJECT_CACHE_DIR/project-cache" build
     fi
 }
 
 copy_to_dist() {
     mkdir -p "$DIST_DIR"
-    cp "$RECIPE_DIR/build/libs/$RECIPE_JAR" "$DIST_DIR/$RECIPE_JAR"
+    cp "$BUILD_RECIPE_DIR/build/libs/$RECIPE_JAR" "$DIST_DIR/$RECIPE_JAR"
     echo "=== Wrote dist/$RECIPE_JAR ==="
 }
 
