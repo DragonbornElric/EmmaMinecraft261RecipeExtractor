@@ -251,6 +251,13 @@ public class UtilityScorer {
         // Sort auction by score descending for clean debug display
         debug.lastAuction.sort((a, b) -> Float.compare(b.score, a.score));
 
+        // No action with a positive score should win the auction. This prevents
+        // always-viable actions from latching on to a dead tick just because they
+        // appear first in registry order.
+        if (bestScore <= 0f) {
+            winner = null;
+        }
+
         // Determine if we should switch
         if (winner != null) {
             String winnerName = winner.getName();
@@ -292,6 +299,10 @@ public class UtilityScorer {
                 currentActiveScore = bestScore;
             }
             debug.activeAction = currentActiveAction;
+        } else {
+            currentActiveAction = "none";
+            currentActiveScore = 0;
+            debug.activeAction = "none";
         }
 
         return winner;
@@ -411,5 +422,17 @@ public class UtilityScorer {
 
     public String getCurrentActiveAction() {
         return currentActiveAction;
+    }
+
+    /**
+     * Override the scorer's active action tracking. Called by GoapTicker when
+     * the commitment lock forces an action to stay active — keeps the scorer's
+     * hysteresis in sync with what GoapTicker actually runs.
+     */
+    public void overrideActiveAction(String actionName) {
+        if (!currentActiveAction.equals(actionName)) {
+            currentActiveAction = actionName;
+            currentActiveScore = 0;  // will be recalculated next tick
+        }
     }
 }

@@ -1,7 +1,9 @@
 package com.emma.bridge.goap.actions;
 
 import emmatone.api.EmmatoneAPI;
+import emmatone.api.pathing.goals.Goal;
 import emmatone.api.pathing.goals.GoalBlock;
+import emmatone.api.pathing.goals.GoalXZ;
 import emmatone.api.process.ICustomGoalProcess;
 import com.emma.bridge.EmmaBridgeMod;
 import com.emma.bridge.goap.GoapAction;
@@ -30,6 +32,7 @@ public class NavigateToAction extends GoapAction {
     private boolean navigating = false;
     private String targetGoalId = null;
     private int targetX, targetY, targetZ;
+    private boolean targetIsXZOnly = false;
 
     @Override
     public String getName() {
@@ -46,10 +49,7 @@ public class NavigateToAction extends GoapAction {
         GoalSet.Goal target = findNavigationTarget(state, goals);
         if (target == null) return 0;
 
-        double dx = targetX - state.posX;
-        double dy = targetY - state.posY;
-        double dz = targetZ - state.posZ;
-        double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        double distance = distanceToTarget(state);
 
         if (distance < MIN_DISTANCE) return 0;
 
@@ -93,7 +93,10 @@ public class NavigateToAction extends GoapAction {
                 .getPrimaryEmmatone()
                 .getCustomGoalProcess();
 
-        goalProcess.setGoalAndPath(new GoalBlock(targetX, targetY, targetZ));
+        Goal goal = targetIsXZOnly
+            ? new GoalXZ(targetX, targetZ)
+            : new GoalBlock(targetX, targetY, targetZ);
+        goalProcess.setGoalAndPath(goal);
         navigating = true;
     }
 
@@ -109,9 +112,15 @@ public class NavigateToAction extends GoapAction {
         if (!pathing && client.player != null) {
             double dx = client.player.getX() - targetX;
             double dz = client.player.getZ() - targetZ;
-            double dist = Math.sqrt(dx * dx + dz * dz);
+            double dist = targetIsXZOnly
+                    ? Math.sqrt(dx * dx + dz * dz)
+                    : Math.sqrt(dx * dx + (client.player.getY() - targetY) * (client.player.getY() - targetY) + dz * dz);
             if (dist < MIN_DISTANCE) {
                 navigating = false;  // Arrived -- score drops, another action wins
+                clearTarget();
+            } else {
+                navigating = false;
+                clearTarget();
             }
         }
     }
@@ -124,7 +133,7 @@ public class NavigateToAction extends GoapAction {
                     .getPathingBehavior().cancelEverything();
             navigating = false;
         }
-        targetGoalId = null;
+        clearTarget();
     }
 
     @Override
@@ -155,6 +164,7 @@ public class NavigateToAction extends GoapAction {
             bd.addProperty("target_x", targetX);
             bd.addProperty("target_y", targetY);
             bd.addProperty("target_z", targetZ);
+            bd.addProperty("target_xz_only", targetIsXZOnly);
             bd.addProperty("food_emergency_nav", targetGoalId.startsWith("food_"));
         }
 
@@ -177,18 +187,20 @@ public class NavigateToAction extends GoapAction {
     private GoalSet.Goal findNavigationTarget(WorldState state, GoalSet goals) {
         GoalSet.Goal bestTarget = null;
         float bestScore = 0;
+        clearTarget();
 
         for (GoalSet.Goal goal : goals.getGoals()) {
             if (goal.isSurvival()) continue;
             if (goal.target == null) continue;
-            if (!goal.target.has("x") || !goal.target.has("y") || !goal.target.has("z")) continue;
+            if (!goal.target.has("x") || !goal.target.has("z")) continue;
 
             double tx = goal.target.get("x").getAsDouble();
-            double ty = goal.target.get("y").getAsDouble();
+            boolean xzOnly = !goal.target.has("y") || goal.target.get("y").isJsonNull();
+            double ty = xzOnly ? state.posY : goal.target.get("y").getAsDouble();
             double tz = goal.target.get("z").getAsDouble();
 
             double dx = tx - state.posX;
-            double dy = ty - state.posY;
+            double dy = xzOnly ? 0 : ty - state.posY;
             double dz = tz - state.posZ;
             double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
@@ -198,16 +210,35 @@ public class NavigateToAction extends GoapAction {
             if (score > bestScore) {
                 bestScore = score;
                 bestTarget = goal;
+                targetIsXZOnly = xzOnly;
             }
         }
 
         if (bestTarget != null) {
             targetGoalId = bestTarget.id;
             targetX = bestTarget.target.get("x").getAsInt();
-            targetY = bestTarget.target.get("y").getAsInt();
+            targetY = targetIsXZOnly ? (int) Math.round(state.posY) : bestTarget.target.get("y").getAsInt();
             targetZ = bestTarget.target.get("z").getAsInt();
         }
 
         return bestTarget;
+    }
+
+    private double distanceToTarget(WorldState state) {
+        double dx = targetX - state.posX;
+        double dz = targetZ - state.posZ;
+        if (targetIsXZOnly) {
+            return Math.sqrt(dx * dx + dz * dz);
+        }
+        double dy = targetY - state.posY;
+        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+    }
+
+    private void clearTarget() {
+        targetGoalId = null;
+        targetX = 0;
+        targetY = 0;
+        targetZ = 0;
+        targetIsXZOnly = false;
     }
 }

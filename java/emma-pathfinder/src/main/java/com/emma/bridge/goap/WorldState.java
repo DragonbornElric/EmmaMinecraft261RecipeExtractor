@@ -351,11 +351,13 @@ public class WorldState {
                 // Skip neutral endermen — they're not a threat unless provoked
                 if (hostile instanceof EnderMan enderMan && !enderMan.isCreepy()) continue;
                 float dist = player.distanceTo(hostile);
+                boolean targeting = hostile.getTarget() == player;
                 threats.add(new ThreatInfo(
                         BuiltInRegistries.ENTITY_TYPE.getKey(hostile.getType()).toString(),
                         hostile.getHealth(),
                         dist,
-                        hostile.getX(), hostile.getY(), hostile.getZ()
+                        hostile.getX(), hostile.getY(), hostile.getZ(),
+                        targeting
                 ));
                 // Track fusing creepers for flee urgency
                 if (hostile instanceof Creeper creeper && creeper.getSwelling(1.0f) > 0.25f) {
@@ -838,14 +840,17 @@ public class WorldState {
         public final float health;
         public final float distance;
         public final double x, y, z;
+        /** True if this mob's AI target is the player. */
+        public final boolean targetingPlayer;
 
-        public ThreatInfo(String type, float health, float distance, double x, double y, double z) {
+        public ThreatInfo(String type, float health, float distance, double x, double y, double z, boolean targetingPlayer) {
             this.type = type;
             this.health = health;
             this.distance = distance;
             this.x = x;
             this.y = y;
             this.z = z;
+            this.targetingPlayer = targetingPlayer;
         }
     }
 

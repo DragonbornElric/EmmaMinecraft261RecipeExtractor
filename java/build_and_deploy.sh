@@ -1,31 +1,30 @@
 #!/bin/bash
-# Build emma-bridge (Emmatone pathfinder + bridge mod) + logger mod + twitch mod + endinv mod, then deploy.
+# Build emma-bridge (Emmatone pathfinder + bridge mod) + logger mod + endinv mod, then deploy.
 #
 # Usage:
 #   ./build_and_deploy.sh                    # build all + deploy all (local only)
-#   ./build_and_deploy.sh --bridge           # build + deploy bridge only (skip logger/twitch/endinv)
+#   ./build_and_deploy.sh --bridge           # build + deploy bridge only (skip logger/endinv)
 #   ./build_and_deploy.sh --logger           # build + deploy logger only
-#   ./build_and_deploy.sh --twitch           # build + deploy twitch mod only
-#   ./build_and_deploy.sh --endinv           # build + deploy endless inventory only
+#   ./build_and_deploy.sh --endinv           # build + deploy endless inventory only to all configured client instances
 #   ./build_and_deploy.sh --recipe-extractor # build + deploy recipe extractor only (server, on-demand)
 #   ./build_and_deploy.sh --server           # build all + deploy all + deploy to server + restart
 #   ./build_and_deploy.sh --bridge --server  # bridge + server deploy + restart
 #
 # IMPORTANT: Shut down Minecraft before running this script to avoid file lock issues.
+# Twitch integration now lives in a separate repository:
+# https://github.com/DragonbornElric/emmaminecraft261twitch
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BRIDGE_DIR="$SCRIPT_DIR/emma-pathfinder"
 LOGGER_DIR="$SCRIPT_DIR/emma-gameplay-logger"
-TWITCH_DIR="$SCRIPT_DIR/emma-twitch"
 ENDINV_DIR="$SCRIPT_DIR/emma-endinv"
 RECIPE_DIR="$SCRIPT_DIR/emma-recipe-extractor"
 DIST_DIR="$SCRIPT_DIR/dist"
 
 BRIDGE_JAR="emma-bridge-mod-0.2.0.jar"
 LOGGER_JAR="emma-gameplay-logger-0.1.0.jar"
-TWITCH_JAR="emma-twitch-0.1.0.jar"
 ENDINV_JAR="emma-endinv-1.2.0.jar"
 RECIPE_JAR="emma-recipe-extractor-0.1.0.jar"
 
@@ -71,13 +70,18 @@ else
     ELRIC_MODS="$PRISM_INSTANCES_DIR/Elric/minecraft/mods"
 fi
 
+if ALTOCLEF_MODS_RESOLVED="$(resolve_mods_dir "Emma 26.1 AltoClef")"; then
+    ALTOCLEF_MODS="$ALTOCLEF_MODS_RESOLVED"
+else
+    ALTOCLEF_MODS="$PRISM_INSTANCES_DIR/Emma 26.1 AltoClef/minecraft/mods"
+fi
+
 SERVER_HOST="192.168.0.225"
 SERVER_USER="emmaserver"
 SERVER_MODS="/var/opt/crafty/servers/EmmaServer/mods"
 
 BRIDGE_ONLY=false
 LOGGER_ONLY=false
-TWITCH_ONLY=false
 ENDINV_ONLY=false
 RECIPE_ONLY=false
 DEPLOY_SERVER=false
@@ -85,7 +89,10 @@ for arg in "$@"; do
     case "$arg" in
         --bridge) BRIDGE_ONLY=true ;;
         --logger) LOGGER_ONLY=true ;;
-        --twitch) TWITCH_ONLY=true ;;
+        --twitch)
+            echo "emma-twitch moved to https://github.com/DragonbornElric/emmaminecraft261twitch" >&2
+            exit 1
+            ;;
         --endinv) ENDINV_ONLY=true ;;
         --recipe-extractor) RECIPE_ONLY=true ;;
         --server) DEPLOY_SERVER=true ;;
@@ -94,27 +101,6 @@ done
 
 # Create dist directory for easy access to all built JARs
 mkdir -p "$DIST_DIR"
-
-# --- Twitch-only mode: just build + deploy twitch mod ---
-if [[ "$TWITCH_ONLY" == true ]]; then
-    echo "=== Building emma-twitch ==="
-    cd "$TWITCH_DIR"
-    ./gradlew.bat build 2>&1 | grep -v "^Note:" | grep -v "not valid semver" | grep -v "\[Incubating\]" | grep -v "problems-report"
-    cp "$TWITCH_DIR/build/libs/$TWITCH_JAR" "$DIST_DIR/$TWITCH_JAR"
-    echo "  dist: $TWITCH_JAR"
-
-    # Deploy to server if requested (twitch is server-only)
-    if [[ "$DEPLOY_SERVER" == true ]]; then
-        echo "=== Deploying twitch mod to server at $SERVER_HOST ==="
-        scp "$DIST_DIR/$TWITCH_JAR" "$SERVER_USER@$SERVER_HOST:$SERVER_MODS/$TWITCH_JAR"
-        echo "  Server: deployed $TWITCH_JAR"
-        echo "  NOTE: Restart the server via Crafty web UI to load new mods"
-    fi
-
-    echo ""
-    echo "=== Done — JAR at: dist/$TWITCH_JAR ==="
-    exit 0
-fi
 
 # --- Logger-only mode: just build + deploy logger ---
 if [[ "$LOGGER_ONLY" == true ]]; then
@@ -159,6 +145,14 @@ if [[ "$ENDINV_ONLY" == true ]]; then
         echo "  Elric: deployed $ENDINV_JAR"
     else
         echo "  WARNING: Elric mods folder not found at $ELRIC_MODS"
+    fi
+
+    # Deploy to AltoClef instance as well.
+    if [[ -d "$ALTOCLEF_MODS" ]]; then
+        cp "$DIST_DIR/$ENDINV_JAR" "$ALTOCLEF_MODS/$ENDINV_JAR"
+        echo "  Emma 26.1 AltoClef: deployed $ENDINV_JAR"
+    else
+        echo "  WARNING: AltoClef mods folder not found at $ALTOCLEF_MODS"
     fi
 
     # Deploy to server if requested
@@ -209,15 +203,7 @@ if [[ "$BRIDGE_ONLY" == false ]]; then
     echo ""
 fi
 
-# --- Step 2b: Build emma-twitch (unless --bridge) ---
-if [[ "$BRIDGE_ONLY" == false ]]; then
-    echo "=== Building emma-twitch ==="
-    cd "$TWITCH_DIR"
-    ./gradlew.bat build 2>&1 | grep -v "^Note:" | grep -v "not valid semver" | grep -v "\[Incubating\]" | grep -v "problems-report"
-    echo ""
-fi
-
-# --- Step 2c: Build emma-endinv (unless --bridge) ---
+# --- Step 2b: Build emma-endinv (unless --bridge) ---
 if [[ "$BRIDGE_ONLY" == false ]]; then
     echo "=== Building emma-endinv ==="
     cd "$ENDINV_DIR"
@@ -230,7 +216,6 @@ echo "=== Copying JARs to dist/ ==="
 cp "$BRIDGE_DIR/build/libs/$BRIDGE_JAR" "$DIST_DIR/$BRIDGE_JAR"
 if [[ "$BRIDGE_ONLY" == false ]]; then
     cp "$LOGGER_DIR/build/libs/$LOGGER_JAR" "$DIST_DIR/$LOGGER_JAR"
-    cp "$TWITCH_DIR/build/libs/$TWITCH_JAR" "$DIST_DIR/$TWITCH_JAR"
     cp "$ENDINV_DIR/build/libs/$ENDINV_JAR" "$DIST_DIR/$ENDINV_JAR"
 fi
 echo "  All JARs copied to dist/"
@@ -244,6 +229,7 @@ echo "  Emma mods dir: $EMMA_MODS"
 echo "  CameraBot mods dir: $CAMERA_MODS"
 if [[ "$BRIDGE_ONLY" == false ]]; then
     echo "  Elric mods dir: $ELRIC_MODS"
+    echo "  Emma 26.1 AltoClef mods dir: $ALTOCLEF_MODS"
 fi
 
 # Remove old bridge mod version
@@ -270,6 +256,13 @@ if [[ "$BRIDGE_ONLY" == false ]]; then
     else
         echo "  WARNING: Elric mods folder not found at $ELRIC_MODS"
     fi
+
+    if [[ -d "$ALTOCLEF_MODS" ]]; then
+        cp "$ENDINV_DIR/build/libs/$ENDINV_JAR" "$ALTOCLEF_MODS/$ENDINV_JAR"
+        echo "  Emma 26.1 AltoClef: deployed $ENDINV_JAR"
+    else
+        echo "  WARNING: AltoClef mods folder not found at $ALTOCLEF_MODS"
+    fi
 fi
 
 # CameraBot instance: bridge mod (spectator only)
@@ -285,10 +278,7 @@ if [[ "$DEPLOY_SERVER" == true ]]; then
     echo ""
     echo "=== Deploying mods to server at $SERVER_HOST (Crafty/EmmaServer) ==="
 
-    # Copy twitch JAR to server (server-side mod)
     if [[ "$BRIDGE_ONLY" == false ]]; then
-        scp "$DIST_DIR/$TWITCH_JAR" "$SERVER_USER@$SERVER_HOST:$SERVER_MODS/$TWITCH_JAR"
-        echo "  Server: deployed $TWITCH_JAR"
         scp "$DIST_DIR/$ENDINV_JAR" "$SERVER_USER@$SERVER_HOST:$SERVER_MODS/$ENDINV_JAR"
         echo "  Server: deployed $ENDINV_JAR"
     fi

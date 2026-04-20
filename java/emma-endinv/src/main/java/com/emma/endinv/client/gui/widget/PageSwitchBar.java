@@ -129,17 +129,12 @@ public class PageSwitchBar extends AbstractWidget {
         for (int i = ScreenFramework.firstPageIndex; i < ScreenFramework.firstPageIndex + framework.pageBarCount; ++i) {
             framework.getPages().get(i).renderPageIcon(guiGraphics, tabX + 15, tabY + 5, partialTick);
             if (mouseX > tabX && mouseX < tabX + tabWidth && mouseY > tabY && mouseY < tabY + tabHeight) {
-                guiGraphics.tooltip(
+                guiGraphics.setTooltipForNextFrame(
                         Minecraft.getInstance().font,
-                        java.util.List.of(
-                                net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent.create(
-                                        framework.getPages().get(i).name.getVisualOrderText()
-                                )
-                        ),
+                        java.util.List.of(framework.getPages().get(i).name),
+                        java.util.Optional.empty(),
                         mouseX,
-                        mouseY,
-                        net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPositioner.INSTANCE,
-                        null
+                        mouseY
                 );
             }
             if(direction_isVertical) tabY+=tabHeight; else tabX+=tabWidth;

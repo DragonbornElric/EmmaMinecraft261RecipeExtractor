@@ -11,6 +11,7 @@ import com.emma.bridge.goap.WorldState;
 import com.emma.bridge.util.CombatHelper;
 import com.emma.bridge.util.InventoryScanner;
 import com.emma.bridge.util.ItemClassifier;
+import com.emma.bridge.control.BlockInteraction;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -22,6 +23,14 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.level.block.CropBlock;
+import net.minecraft.world.level.block.CocoaBlock;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.NetherWartBlock;
+import net.minecraft.world.level.block.SugarCaneBlock;
+import net.minecraft.world.level.block.BambooStalkBlock;
+import net.minecraft.world.level.block.CactusBlock;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
 
@@ -48,13 +57,21 @@ public class CollectFoodAction extends GoapAction {
     /** Sea level — secondary underground check for open caverns with stray skylight. */
     private static final int SEA_LEVEL_Y = 60;
 
-    private enum Phase { EVALUATE, DIRECT_GATHER, GOAL_CHAIN_MONITOR }
+    private enum Phase { EVALUATE, DIRECT_GATHER, GOAL_CHAIN_MONITOR, FRONTIER_WANDER }
     private enum GatherStrategy { PICKUP_ITEM, HARVEST_BLOCK, HUNT_ANIMAL }
+
+    /** Ticks to wait after FarmProcess fails before retrying harvest. */
+    private static final int FARM_FAIL_COOLDOWN = 200;  // 10 seconds
+    /** Ticks to wait after finding zero food sources before retrying. */
+    private static final int NO_SOURCE_COOLDOWN = 400;  // 20 seconds
 
     private Phase phase = Phase.EVALUATE;
     private boolean active = false;
     private GatherStrategy gatherStrategy;
     private Entity targetEntity;                // animal or ground item entity
+    private int farmFailCooldown;               // ticks remaining before retrying farm
+    private int noSourceCooldown;               // ticks remaining before retrying after no food sources
+    private int farmStartTick;                  // tick when FarmProcess was started
 
     // Mode B: goal chain
     private String activeFoodGoalId;            // non-null when Mode B is active
@@ -66,6 +83,7 @@ public class CollectFoodAction extends GoapAction {
     private boolean isNavigationGoal;           // true when goal is navigate_to (base or surface)
     private double lastDistanceToTarget;        // for navigation stall detection
     private int navTargetX, navTargetY, navTargetZ;  // cached target for distance checks
+    private final FrontierWanderer frontierWanderer = new FrontierWanderer();
 
     // GoalSet + BaseRegistry references (injected by EmmaBridgeClient wiring)
     private GoalSet goalSetRef;
@@ -93,6 +111,9 @@ public class CollectFoodAction extends GoapAction {
     @Override
     public boolean checkPreconditions(WorldState state) {
         if (activeFoodGoalId != null) return false;
+        // Decrement cooldowns here since checkPreconditions runs every tick for all actions
+        if (noSourceCooldown > 0) { noSourceCooldown--; return false; }
+        if (farmFailCooldown > 0) farmFailCooldown--;
         return state.foodItemCount < LOW_FOOD_THRESHOLD;
     }
 
@@ -138,6 +159,7 @@ public class CollectFoodAction extends GoapAction {
             case EVALUATE -> evaluateAndAct(client, player);
             case DIRECT_GATHER -> tickDirectGather(client, player);
             case GOAL_CHAIN_MONITOR -> tickGoalChainMonitor(player);
+            case FRONTIER_WANDER -> tickFrontierWander(client, player);
         }
     }
 
@@ -165,24 +187,15 @@ public class CollectFoodAction extends GoapAction {
 
         // Priority 2: Food blocks/crops nearby (low effort, no combat)
         // Use Emmatone's FarmProcess which handles harvest + replant automatically
-        Set<String> foodBlocks = ItemRecipeRegistry.getFoodSourceBlocks();
-        boolean hasFoodBlocksNearby = false;
-        for (String block : foodBlocks) {
-            String fullBlock = block.contains(":") ? block : "minecraft:" + block;
-            List<BlockPos> nearby = findNearbyFoodBlocks(player, fullBlock);
-            if (!nearby.isEmpty()) {
-                hasFoodBlocksNearby = true;
-                break;
-            }
-        }
-        if (hasFoodBlocksNearby) {
-            gatherStrategy = GatherStrategy.HARVEST_BLOCK;
-            phase = Phase.DIRECT_GATHER;
-            // FarmProcess handles pathfinding, harvesting mature crops, AND replanting
-            EmmatoneAPI.getProvider().getPrimaryEmmatone()
-                    .getFarmProcess().farm(32, player.blockPosition());
-            EmmaBridgeMod.LOGGER.info("[CollectFood] Using FarmProcess to harvest nearby food crops");
-            return;
+        if (farmFailCooldown <= 0 && hasHarvestableFoodBlocksNearby(player)) {
+                gatherStrategy = GatherStrategy.HARVEST_BLOCK;
+                phase = Phase.DIRECT_GATHER;
+                farmStartTick = 0;
+                // FarmProcess handles pathfinding, harvesting mature crops, AND replanting
+                EmmatoneAPI.getProvider().getPrimaryEmmatone()
+                        .getFarmProcess().farm(32, player.blockPosition());
+                EmmaBridgeMod.LOGGER.info("[CollectFood] Using FarmProcess to harvest nearby food crops");
+                return;
         }
 
         // Priority 3: Food animals (medium effort, requires combat)
@@ -221,8 +234,11 @@ public class CollectFoodAction extends GoapAction {
         }
 
         // Nothing available on the surface — unusual edge case
-        EmmaBridgeMod.LOGGER.info("[CollectFood] No food sources found nearby");
-        active = false;
+        phase = Phase.FRONTIER_WANDER;
+        if (!frontierWanderer.isActive()) {
+            frontierWanderer.start(player);
+            EmmaBridgeMod.LOGGER.info("[CollectFood] No food sources in loaded chunks, starting frontier wander");
+        }
     }
 
     // ── Direct gather tick ──────────────────────────────────────
@@ -252,10 +268,16 @@ public class CollectFoodAction extends GoapAction {
                 }
             }
             case HARVEST_BLOCK -> {
+                farmStartTick++;
                 // FarmProcess handles harvest + replant automatically
                 if (!EmmatoneAPI.getProvider().getPrimaryEmmatone().getFarmProcess().isActive()) {
-                    // Farming done — cancel pathing so next goal can take over cleanly
                     cancelPathing();
+                    if (farmStartTick < 40) {
+                        // FarmProcess failed almost immediately — cooldown before retrying
+                        farmFailCooldown = FARM_FAIL_COOLDOWN;
+                        EmmaBridgeMod.LOGGER.info("[CollectFood] FarmProcess failed instantly, cooling down {}s",
+                                FARM_FAIL_COOLDOWN / 20);
+                    }
                     phase = Phase.EVALUATE;
                 }
             }
@@ -268,7 +290,16 @@ public class CollectFoodAction extends GoapAction {
                     phase = Phase.EVALUATE;
                     return;
                 }
+                // Re-path if pathing finished but still too far
+                if (!EmmatoneAPI.getProvider().getPrimaryEmmatone().getCustomGoalProcess().isActive()
+                        && player.distanceTo(targetEntity) > 3.5) {
+                    EmmatoneAPI.getProvider().getPrimaryEmmatone().getCustomGoalProcess()
+                            .setGoalAndPath(new emmatone.api.pathing.goals.GoalNear(
+                                    targetEntity.blockPosition(), 2));
+                }
                 if (player.distanceTo(targetEntity) < 3.5) {
+                    // Face the animal's body center (eye pos is too high for sheep/chickens)
+                    BlockInteraction.lookAt(targetEntity.position().add(0, targetEntity.getBbHeight() * 0.5, 0));
                     CombatHelper.tryAttack(client, player, targetEntity);
                 }
             }
@@ -466,7 +497,10 @@ public class CollectFoodAction extends GoapAction {
         active = false;
         targetEntity = null;
         phase = Phase.EVALUATE;
+        frontierWanderer.reset();
+        farmStartTick = 0;
         // Don't clean up food goal on deactivation — it should persist for other actions
+        // Don't reset farmFailCooldown — it should persist across activations
         cancelPathing();
     }
 
@@ -484,10 +518,32 @@ public class CollectFoodAction extends GoapAction {
         EmmatoneAPI.getProvider().getPrimaryEmmatone().getPathingBehavior().cancelEverything();
     }
 
+    private void tickFrontierWander(Minecraft client, LocalPlayer player) {
+        if (countFoodInInventory(player) >= TARGET_FOOD_COUNT) {
+            frontierWanderer.reset();
+            cancelPathing();
+            active = false;
+            return;
+        }
+
+        if (findNearestGroundFood(player) != null
+                || hasHarvestableFoodBlocksNearby(player)
+                || findNearestFoodAnimal(player) != null
+                || (goalSetRef != null && findBestMultiStepFood(player) != null)) {
+            frontierWanderer.reset();
+            cancelPathing();
+            phase = Phase.EVALUATE;
+            evaluateAndAct(client, player);
+            return;
+        }
+
+        frontierWanderer.tick(player);
+    }
+
     // ── Food source scanning ────────────────────────────────────
 
     private Entity findNearestGroundFood(LocalPlayer player) {
-        AABB searchBox = player.getBoundingBox().inflate(32);
+        AABB searchBox = player.getBoundingBox().inflate(getLoadedChunkSearchRadius());
         Entity nearest = null;
         double nearestDist = Double.MAX_VALUE;
 
@@ -505,25 +561,84 @@ public class CollectFoodAction extends GoapAction {
         return nearest;
     }
 
+    private boolean hasHarvestableFoodBlocksNearby(LocalPlayer player) {
+        Set<String> foodBlocks = ItemRecipeRegistry.getFoodSourceBlocks();
+        for (String block : foodBlocks) {
+            String fullBlock = block.contains(":") ? block : "minecraft:" + block;
+            if (!findNearbyFoodBlocks(player, fullBlock).isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private List<BlockPos> findNearbyFoodBlocks(LocalPlayer player, String fullBlockId) {
         // Use BlockScanner data from WorldState (populated by GoapTicker every second)
         if (cachedWorldState != null && !cachedWorldState.nearbyBlocks.isEmpty()) {
             List<BlockPos> positions = cachedWorldState.nearbyBlocks.get(fullBlockId);
-            return positions != null ? positions : List.of();
+            if (positions == null || positions.isEmpty()) return List.of();
+
+            // Filter to only mature/harvestable crops — avoids calling FarmProcess
+            // when nearby crops exist but aren't ready yet
+            List<BlockPos> harvestable = new ArrayList<>();
+            for (BlockPos pos : positions) {
+                BlockState state = player.level().getBlockState(pos);
+                if (isHarvestable(player.level(), pos, state)) {
+                    harvestable.add(pos);
+                }
+            }
+            return harvestable;
         }
         // Fallback: no WorldState cached yet (shouldn't happen in normal operation)
         return List.of();
     }
 
+    /**
+     * Check if a crop/food block is ready to harvest.
+     * Mirrors FarmProcess.Harvest logic so we don't call FarmProcess for immature crops.
+     */
+    private boolean isHarvestable(net.minecraft.world.level.Level level, BlockPos pos, BlockState state) {
+        var block = state.getBlock();
+
+        // Standard crops (wheat, carrots, potatoes, beetroot): max age
+        if (block instanceof CropBlock crop) {
+            return crop.isMaxAge(state);
+        }
+        // Nether wart: age >= 3
+        if (block instanceof NetherWartBlock) {
+            return state.getValue(NetherWartBlock.AGE) >= 3;
+        }
+        // Cocoa: age >= 2
+        if (block instanceof CocoaBlock) {
+            return state.getValue(CocoaBlock.AGE) >= 2;
+        }
+        // Sugar cane / bamboo / cactus: harvestable if block below is same type (leave base)
+        if (block instanceof SugarCaneBlock) {
+            return level.getBlockState(pos.below()).getBlock() instanceof SugarCaneBlock;
+        }
+        if (block instanceof BambooStalkBlock) {
+            return level.getBlockState(pos.below()).getBlock() instanceof BambooStalkBlock;
+        }
+        if (block instanceof CactusBlock) {
+            return level.getBlockState(pos.below()).getBlock() instanceof CactusBlock;
+        }
+        // Pumpkin / melon: always harvestable (full fruit blocks)
+        if (block == Blocks.PUMPKIN || block == Blocks.MELON) return true;
+        // Unknown block type — FarmProcess won't handle it, don't attempt
+        return false;
+    }
+
     private Entity findNearestFoodAnimal(LocalPlayer player) {
         Set<String> foodEntities = ItemRecipeRegistry.getFoodSourceEntities();
-        AABB searchBox = player.getBoundingBox().inflate(32);
+        AABB searchBox = player.getBoundingBox().inflate(getLoadedChunkSearchRadius());
         Entity nearest = null;
         double nearestDist = Double.MAX_VALUE;
 
         for (Entity entity : player.level().getEntities(player, searchBox)) {
             // Skip hostile mobs (hoglin drops porkchop but we don't hunt it for food)
             if (entity instanceof Monster) continue;
+            // Skip aquatic targets — player will drown before catching them
+            if (entity.isInWater()) continue;
 
             String typeId = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).getPath();
             if (foodEntities.contains(typeId)) {
@@ -535,6 +650,10 @@ public class CollectFoodAction extends GoapAction {
             }
         }
         return nearest;
+    }
+
+    private double getLoadedChunkSearchRadius() {
+        return Math.max(32.0, GoapNavHelper.getLoadedChunkRadius() * 16.0);
     }
 
     /**

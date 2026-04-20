@@ -11,6 +11,7 @@ import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.AABB;
@@ -50,7 +51,8 @@ public class FleeFromAction extends GoapAction {
 
     @Override
     public boolean checkPreconditions(WorldState state) {
-        return !state.threats.isEmpty();
+        // Only flee if at least one mob is actively targeting the player
+        return state.threats.stream().anyMatch(t -> t.targetingPlayer);
     }
 
     @Override
@@ -61,14 +63,14 @@ public class FleeFromAction extends GoapAction {
                 .map(g -> g.priority)
                 .orElse(8.0f);
 
-        // Count threats within 16 blocks
+        // Count threats targeting the player within 16 blocks
         int nearThreats = 0;
         boolean creeperNearby = false;
         CombatHelper.DangerTier highestTier = CombatHelper.DangerTier.STANDARD;
         double closestDist = Double.MAX_VALUE;
 
         for (ThreatInfo threat : state.threats) {
-            if (threat.distance < 16) {
+            if (threat.distance < 16 && threat.targetingPlayer) {
                 nearThreats++;
                 if (threat.distance < closestDist) closestDist = threat.distance;
                 if (threat.type.contains("creeper")) creeperNearby = true;
@@ -217,6 +219,13 @@ public class FleeFromAction extends GoapAction {
     }
 
     @Override
+    public int getMinimumActiveTicks() {
+        // Commit to fleeing for 2 seconds — prevents oscillation when threats
+        // are near the 16-block scan boundary causing score to swing 0↔12+
+        return 40;
+    }
+
+    @Override
     public String getPrimaryGoalId() {
         return "survive";
     }
@@ -248,13 +257,16 @@ public class FleeFromAction extends GoapAction {
         LocalPlayer player = client.player;
         if (player == null) return;
 
-        // Collect positions of nearby hostiles to run away from
+        // Collect positions of hostiles targeting the player
         AABB scanBox = player.getBoundingBox().inflate(16);
         List<BlockPos> threatPositions = new ArrayList<>();
 
         for (Entity entity : player.level().getEntities(player, scanBox)) {
-            if (entity instanceof Monster && entity.isAlive()) {
-                threatPositions.add(entity.blockPosition());
+            if (entity instanceof Monster mob && entity.isAlive()) {
+                // Only flee from mobs targeting us (or very close — they're about to hit)
+                if (mob.getTarget() == player || player.distanceTo(entity) < 4.0) {
+                    threatPositions.add(entity.blockPosition());
+                }
             }
         }
 

@@ -4,11 +4,15 @@ import emmatone.api.EmmatoneAPI;
 import emmatone.api.IEmmatone;
 import emmatone.api.behavior.IPathingBehavior;
 import emmatone.api.pathing.goals.GoalBlock;
+import emmatone.api.pathing.goals.GoalXZ;
 import emmatone.api.process.ICustomGoalProcess;
 import emmatone.api.process.IMineProcess;
 import emmatone.api.utils.VecUtils;
+import emmatone.utils.accessor.IChunkArray;
+import emmatone.utils.accessor.IClientChunkProvider;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.ChunkPos;
 
 /**
  * Shared Emmatone navigation utilities for GOAP actions.
@@ -60,6 +64,32 @@ public final class GoapNavHelper {
         goalProcess().setGoalAndPath(new GoalBlock(pos));
     }
 
+    public static void pathToXZ(int x, int z) {
+        goalProcess().setGoalAndPath(new GoalXZ(x, z));
+    }
+
+    public static int getLoadedChunkRadius() {
+        if (!(emmatone().getPlayerContext().world().getChunkSource() instanceof IClientChunkProvider provider)) {
+            return 8;
+        }
+        IChunkArray chunkArray = provider.extractReferenceArray();
+        return chunkArray != null ? Math.max(1, chunkArray.viewDistance()) : 8;
+    }
+
+    public static ChunkPos getLoadedChunkCenter(LocalPlayer player) {
+        if (player != null
+                && player.level().getChunkSource() instanceof IClientChunkProvider provider) {
+            IChunkArray chunkArray = provider.extractReferenceArray();
+            if (chunkArray != null) {
+                return new ChunkPos(chunkArray.centerX(), chunkArray.centerZ());
+            }
+        }
+        if (player == null) {
+            return new ChunkPos(0, 0);
+        }
+        return new ChunkPos(player.blockPosition().getX() >> 4, player.blockPosition().getZ() >> 4);
+    }
+
     /** Arrival distance for container interactions (crafting table, furnace, chest, etc.). */
     public static final double CONTAINER_ARRIVAL_DIST = 2.0;
 
@@ -91,6 +121,34 @@ public final class GoapNavHelper {
 
         if (!isPathing()) {
             pathTo(target);
+        }
+
+        if (waitTicks > timeoutTicks) {
+            cancelPathing();
+            return NavResult.TIMEOUT;
+        }
+
+        return NavResult.PATHING;
+    }
+
+    public static NavResult tickNavigateToXZ(LocalPlayer player, int targetX, int targetZ,
+                                             int waitTicks, int timeoutTicks,
+                                             double arrivalDist) {
+        if (player == null) {
+            return NavResult.NO_TARGET;
+        }
+
+        double dx = player.getX() - targetX;
+        double dz = player.getZ() - targetZ;
+        double dist = Math.sqrt(dx * dx + dz * dz);
+
+        if (dist < arrivalDist) {
+            cancelPathing();
+            return NavResult.ARRIVED;
+        }
+
+        if (!isPathing()) {
+            pathToXZ(targetX, targetZ);
         }
 
         if (waitTicks > timeoutTicks) {

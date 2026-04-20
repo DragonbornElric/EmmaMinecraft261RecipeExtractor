@@ -2,6 +2,7 @@ package com.emma.bridge.events;
 
 import com.emma.bridge.EmmaBridgeMod;
 import com.emma.bridge.commands.CommandRouter;
+import com.emma.bridge.goap.actions.EstablishBaseAction;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
@@ -26,6 +27,7 @@ import net.minecraft.network.chat.Component;
  *   @personality         — show personality weights
  *   @inventory           — show inventory
  *   @farm                — start farming
+ *   @base establish       — find village and register as base
  *
  * Messages are intercepted BEFORE they reach the server, so nothing is sent to chat.
  * Responses appear as client-side system messages.
@@ -163,6 +165,11 @@ public class ChatCommandInterceptor {
                 parseGoap(argStr);
             }
 
+            // ── Base ──
+            case "base" -> {
+                parseBase(argStr);
+            }
+
             // ── Farming ──
             case "farm" -> {
                 JsonObject params = new JsonObject();
@@ -293,6 +300,22 @@ public class ChatCommandInterceptor {
             } else {
                 int goalCount = result.has("goals_set") ? result.get("goals_set").getAsInt() : 0;
                 sendResponse("Hero mode: " + tier + " tier (" + goalCount + " goals, GOAP enabled)");
+            }
+        }
+    }
+
+    private void parseBase(String argStr) {
+        switch (argStr.toLowerCase()) {
+            case "establish" -> {
+                EstablishBaseAction.triggerByCommand();
+                // Enable GOAP so the action can run
+                JsonObject enableParams = new JsonObject();
+                enableParams.addProperty("action", "enable");
+                dispatch("agent_debug", enableParams);
+                sendResponse("Base: village search triggered (GOAP enabled)");
+            }
+            default -> {
+                sendResponse("Usage: @base establish");
             }
         }
     }

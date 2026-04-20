@@ -186,6 +186,12 @@ public class GoalDecomposer {
         if (!derived.isEmpty()) {
             EmmaBridgeMod.LOGGER.info("[GoalDecomposer] Expanded {} user goals into {} subgoals",
                     goalSet.getUserGoals().size(), derived.size());
+            for (GoalSet.Goal g : derived) {
+                String item = g.target != null && g.target.has("item") ? g.target.get("item").getAsString() : "?";
+                String method = g.target != null && g.target.has("obtain_method") ? g.target.get("obtain_method").getAsString() : "?";
+                EmmaBridgeMod.LOGGER.debug("[GoalDecomposer]   {} type={} item={} method={} priority={}",
+                        g.id, g.type, item, method, String.format("%.1f", g.priority));
+            }
         }
 
         return derived;

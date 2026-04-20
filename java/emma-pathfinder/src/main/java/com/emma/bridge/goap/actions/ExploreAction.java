@@ -13,7 +13,6 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 
 import java.util.List;
-import java.util.Random;
 
 /**
  * GOAP Action: Explore to find resources when needed blocks are not in scanner range.
@@ -32,15 +31,12 @@ import java.util.Random;
  */
 public class ExploreAction extends GoapAction {
 
-    private static final Random random = new Random();
-    private static final int EXPLORE_TIMEOUT_TICKS = 800; // 40 seconds — needs to be long enough for ocean crossings
-
     private boolean exploring = false;
     private String targetGoalId = null;
     private BlockPos targetPos = null;
-    private int exploreTicks = 0;
     private boolean needsUndergroundOre = false;
     private boolean lowFoodSuppressedLogged = false;
+    private final FrontierWanderer frontierWanderer = new FrontierWanderer();
 
     @Override
     public String getName() {
@@ -106,10 +102,9 @@ public class ExploreAction extends GoapAction {
         LocalPlayer player = client.player;
         if (player == null) return;
 
-        targetPos = generateRandomTarget(player);
-        GoapNavHelper.pathTo(targetPos);
+        frontierWanderer.start(player);
+        targetPos = frontierWanderer.getCurrentTarget();
         exploring = true;
-        exploreTicks = 0;
     }
 
     @Override
@@ -119,25 +114,10 @@ public class ExploreAction extends GoapAction {
         LocalPlayer player = client.player;
         if (player == null) return;
 
-        exploreTicks++;
-
-        switch (GoapNavHelper.tickNavigateToBlock(player, targetPos, exploreTicks, EXPLORE_TIMEOUT_TICKS, 3.0)) {
-            case ARRIVED -> {
-                // Arrived at target — pick a new random direction and keep exploring
-                targetPos = generateRandomTarget(player);
-                GoapNavHelper.pathTo(targetPos);
-                exploreTicks = 0;
-            }
-            case TIMEOUT -> {
-                // Stuck — pick a different direction
-                targetPos = generateRandomTarget(player);
-                GoapNavHelper.pathTo(targetPos);
-                exploreTicks = 0;
-            }
-            case PATHING -> {} // still moving
-            case NO_TARGET -> {
-                exploring = false;
-            }
+        FrontierWanderer.StepResult step = frontierWanderer.tick(player);
+        targetPos = frontierWanderer.getCurrentTarget();
+        if (step == FrontierWanderer.StepResult.IDLE) {
+            exploring = false;
         }
     }
 
@@ -147,6 +127,7 @@ public class ExploreAction extends GoapAction {
             GoapNavHelper.cancelPathing();
             exploring = false;
         }
+        frontierWanderer.reset();
         targetGoalId = null;
         targetPos = null;
         needsUndergroundOre = false;
@@ -174,6 +155,7 @@ public class ExploreAction extends GoapAction {
         bd.addProperty("exploring", exploring);
         bd.addProperty("target_goal", targetGoalId != null ? targetGoalId : "none");
         bd.addProperty("needs_underground", needsUndergroundOre);
+        bd.addProperty("bearing", frontierWanderer.getBearing() != null ? frontierWanderer.getBearing().name() : "none");
         if (targetPos != null) {
             bd.addProperty("target_pos", targetPos.getX() + "," + targetPos.getY() + "," + targetPos.getZ());
         }
@@ -232,25 +214,5 @@ public class ExploreAction extends GoapAction {
 
         // Only need exploration if there are mining goals with invisible blocks
         return hasAnyMineGoal && !allBlocksVisible;
-    }
-
-    /**
-     * Generate a random BlockPos 50-80 blocks away from the player.
-     * When seeking underground ores from the surface, targets Y=16-48.
-     */
-    private BlockPos generateRandomTarget(LocalPlayer player) {
-        double angle = random.nextDouble() * 2 * Math.PI;
-        double distance = 50.0 + random.nextDouble() * 30.0;
-        int targetX = (int) (player.getX() + distance * Math.cos(angle));
-        int targetZ = (int) (player.getZ() + distance * Math.sin(angle));
-
-        int targetY;
-        if (needsUndergroundOre && player.getY() > 50) {
-            // Navigate underground to where ores generate (Y=16-48)
-            targetY = 16 + random.nextInt(32);
-        } else {
-            targetY = (int) player.getY();
-        }
-        return new BlockPos(targetX, targetY, targetZ);
     }
 }

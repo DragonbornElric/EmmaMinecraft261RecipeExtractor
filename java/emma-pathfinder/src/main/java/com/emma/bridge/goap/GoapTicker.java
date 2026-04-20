@@ -5,8 +5,10 @@ import com.emma.bridge.catalogue.ItemRecipeEntry;
 import com.emma.bridge.catalogue.ItemRecipeRegistry;
 import com.emma.bridge.catalogue.ObtainMethod;
 import com.emma.bridge.util.InventoryScanner;
+import emmatone.api.EmmatoneAPI;
+import emmatone.utils.accessor.IChunkArray;
+import emmatone.utils.accessor.IClientChunkProvider;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -70,8 +72,6 @@ public class GoapTicker {
 
     /** Block scanner: runs every 20 ticks (1 second) to populate nearbyBlocks. */
     private static final int BLOCK_SCAN_INTERVAL = 20;
-    private static final int BLOCK_SCAN_RADIUS = 32;
-    private static final int BLOCK_SCAN_Y_RANGE = 32;
     private int blockScanCounter = 0;
 
     /** Goal decomposition: event-driven with debounce. */
@@ -204,6 +204,8 @@ public class GoapTicker {
             if (minTicks > 0 && activeActionTicks < minTicks) {
                 // Stay with current action — commitment not yet fulfilled
                 winner = activeAction;
+                // Keep scorer in sync so hysteresis applies to the correct action
+                scorer.overrideActiveAction(activeAction.getName());
             }
         }
 
@@ -568,9 +570,10 @@ public class GoapTicker {
         targetBlocks.add("minecraft:nether_portal");
         targetBlocks.add("minecraft:end_portal_frame");
 
-        // When no base exists in overworld, also scan for village indicators
+        // When no base exists in overworld and @base establish was commanded, scan for village indicators
         boolean scanVillage = !worldState.hasBase
-                && worldState.dimension.contains("overworld");
+                && worldState.dimension.contains("overworld")
+                && com.emma.bridge.goap.actions.EstablishBaseAction.isCommandTriggered();
         Set<String> villageTargets = scanVillage
                 ? com.emma.bridge.goap.actions.EstablishBaseAction.VILLAGE_INDICATOR_BLOCKS
                 : Set.of();
@@ -594,28 +597,30 @@ public class GoapTicker {
             return;
         }
 
-        // Scan in radius around player
         Map<String, List<BlockPos>> result = new HashMap<>();
         Map<String, List<BlockPos>> villageResult = new HashMap<>();
-        BlockPos center = player.blockPosition();
+        Set<Block> scanBlocks = new LinkedHashSet<>(blockToId.keySet());
+        scanBlocks.addAll(villageBlockToId.keySet());
 
-        for (int dx = -BLOCK_SCAN_RADIUS; dx <= BLOCK_SCAN_RADIUS; dx++) {
-            for (int dz = -BLOCK_SCAN_RADIUS; dz <= BLOCK_SCAN_RADIUS; dz++) {
-                for (int dy = -BLOCK_SCAN_Y_RANGE; dy <= BLOCK_SCAN_Y_RANGE; dy++) {
-                    BlockPos pos = center.offset(dx, dy, dz);
-                    BlockState state = world.getBlockState(pos);
-                    Block block = state.getBlock();
+        int chunkRadius = resolveLoadedChunkRadius(world);
+        List<BlockPos> matches = EmmatoneAPI.getProvider().getWorldScanner().scanChunkRadius(
+                EmmatoneAPI.getProvider().getPrimaryEmmatone().getPlayerContext(),
+                new ArrayList<>(scanBlocks),
+                -1,
+                -1,
+                chunkRadius + 1);
 
-                    String id = blockToId.get(block);
-                    if (id != null) {
-                        result.computeIfAbsent(id, k -> new ArrayList<>()).add(pos);
-                    }
-                    // Village indicators route to separate map
-                    String vid = villageBlockToId.get(block);
-                    if (vid != null) {
-                        villageResult.computeIfAbsent(vid, k -> new ArrayList<>()).add(pos);
-                    }
-                }
+        for (BlockPos pos : matches) {
+            Block block = world.getBlockState(pos).getBlock();
+
+            String id = blockToId.get(block);
+            if (id != null) {
+                result.computeIfAbsent(id, k -> new ArrayList<>()).add(pos);
+            }
+
+            String vid = villageBlockToId.get(block);
+            if (vid != null) {
+                villageResult.computeIfAbsent(vid, k -> new ArrayList<>()).add(pos);
             }
         }
 
@@ -635,6 +640,14 @@ public class GoapTicker {
         if (portalRegistry != null) {
             autoSavePortals(result);
         }
+    }
+
+    private int resolveLoadedChunkRadius(ClientLevel world) {
+        if (!(world.getChunkSource() instanceof IClientChunkProvider provider)) {
+            return 8;
+        }
+        IChunkArray chunkArray = provider.extractReferenceArray();
+        return chunkArray != null ? Math.max(1, chunkArray.viewDistance()) : 8;
     }
 
     /** Resolve a block ID string to a Block object and add to the lookup map. */

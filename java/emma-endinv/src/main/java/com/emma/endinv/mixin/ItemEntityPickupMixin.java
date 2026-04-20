@@ -6,11 +6,15 @@ import com.emma.endinv.ServerLevelEndInv;
 import com.emma.endinv.network.payloads.toClient.ItemPickedUpPayload;
 import com.emma.endinv.options.ServerConfigs;
 import com.mojang.logging.LogUtils;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.RecipeType;
 import org.slf4j.Logger;
+
+import java.util.stream.Collectors;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -75,6 +79,20 @@ public abstract class ItemEntityPickupMixin {
                         new ItemPickedUpPayload(stack.copyWithCount(added)));
                 // Play pickup animation
                 player.take(self, added);
+                // Award crafting recipes unlocked by this item.
+                // Vanilla does this via advancement triggers on normal pickup; EndInv bypasses
+                // that flow entirely, so we replicate it here. awardRecipes is idempotent —
+                // only newly-unlocked recipes generate a client packet.
+                ItemStack stored = stack.copyWithCount(added);
+                var toAward = ((ServerLevel) serverPlayer.level()).getServer().getRecipeManager()
+                    .getRecipes().stream()
+                    .filter(holder -> holder.value().getType() == RecipeType.CRAFTING)
+                    .filter(holder -> holder.value().placementInfo().ingredients().stream()
+                        .anyMatch(ing -> ing.test(stored)))
+                        .collect(Collectors.toList());
+                if (!toAward.isEmpty()) {
+                    serverPlayer.awardRecipes(toAward);
+                }
             }
 
             if (remain.isEmpty()) {

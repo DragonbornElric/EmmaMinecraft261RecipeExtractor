@@ -7,6 +7,7 @@ import com.emma.bridge.goap.GoapStateFlags;
 import com.emma.bridge.goap.GoalSet;
 import com.emma.bridge.goap.StrategyKnowledge;
 import com.emma.bridge.goap.WorldState;
+import com.emma.bridge.goap.WorldState.ThreatInfo;
 import com.emma.bridge.util.CombatHelper;
 import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
@@ -59,7 +60,12 @@ public class AttackEntityAction extends GoapAction {
         if (GoapStateFlags.get().isEating) return false;
         // Note: do NOT check isShielding here — we need AttackEntity to score
         // during shield blocks so it can outbid non-combat actions
-        return !state.threats.isEmpty() && state.threats.get(0).distance < ENGAGE_RANGE;
+        // Only engage if a mob is targeting the player or is in melee range
+        for (var threat : state.threats) {
+            if (threat.distance < ENGAGE_RANGE && threat.targetingPlayer) return true;
+            if (threat.distance < 4.0) return true;  // react to anything in melee range
+        }
+        return false;
     }
 
     @Override
@@ -70,15 +76,28 @@ public class AttackEntityAction extends GoapAction {
                 .map(g -> g.priority)
                 .orElse(8.0f);
 
+        // Find closest threat that is targeting the player (or in melee range)
+        ThreatInfo primaryThreat = null;
+        int activeThreats = 0;
+        for (var threat : state.threats) {
+            if (threat.targetingPlayer || threat.distance < 4.0) {
+                activeThreats++;
+                if (primaryThreat == null || threat.distance < primaryThreat.distance) {
+                    primaryThreat = threat;
+                }
+            }
+        }
+        if (primaryThreat == null) return 0;
+
         // Threat proximity urgency: 1.0 at melee range, drops off with distance
-        float closestDist = state.threats.get(0).distance;
+        float closestDist = primaryThreat.distance;
         float proximityUrgency = 1.0f / (1.0f + closestDist / 5.0f);
 
         // Health urgency: lower health = more urgent to kill threats
         float healthFactor = 1.0f + (1.0f - state.health / state.maxHealth) * 0.5f;
 
         // Multiple threats: more threats = more urgent
-        float threatMultiplier = Math.min(1.5f, 1.0f + (state.threats.size() - 1) * 0.1f);
+        float threatMultiplier = Math.min(1.5f, 1.0f + (activeThreats - 1) * 0.1f);
 
         // Equipment factor: better gear = more willing to fight
         // equipmentScore ranges ~0-10, normalize to 0.5-1.5 multiplier
@@ -93,7 +112,7 @@ public class AttackEntityAction extends GoapAction {
         }
 
         // Single-target bonus: safe engagement against lone non-creeper threat
-        if (state.threats.size() == 1 && !state.threats.get(0).type.contains("creeper")) {
+        if (activeThreats == 1 && !primaryThreat.type.contains("creeper")) {
             score *= 1.2f;
         }
 

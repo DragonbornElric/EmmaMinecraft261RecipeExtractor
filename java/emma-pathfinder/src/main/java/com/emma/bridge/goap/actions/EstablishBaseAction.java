@@ -34,6 +34,20 @@ import java.util.*;
  */
 public class EstablishBaseAction extends GoapAction {
 
+    // ── Command gate ────────────────────────────────────────────────
+    // Only activates when triggered by @base establish command
+    private static volatile boolean commandTriggered = false;
+
+    /** Called by ChatCommandInterceptor when player types @base establish. */
+    public static void triggerByCommand() {
+        commandTriggered = true;
+    }
+
+    /** Whether the command has been triggered (used by GoapTicker for village scanning). */
+    public static boolean isCommandTriggered() {
+        return commandTriggered;
+    }
+
     // ── Village indicator block IDs ──────────────────────────────────
 
     /** Block types that indicate a village. Exposed for GoapTicker scanner. */
@@ -120,6 +134,7 @@ public class EstablishBaseAction extends GoapAction {
 
     @Override
     public boolean checkPreconditions(WorldState state) {
+        if (!commandTriggered) return false;
         if (state.hasBase) return false;
         if (!state.dimension.contains("overworld")) return false;
         return true;
@@ -127,6 +142,7 @@ public class EstablishBaseAction extends GoapAction {
 
     @Override
     public float computeScore(WorldState state, GoalSet goals) {
+        if (!commandTriggered) return 0;
         if (state.hasBase) return 0;
         if (!state.dimension.contains("overworld")) return 0;
         float survivalPriority = goals.getGoalPriority("survive");
@@ -474,6 +490,7 @@ public class EstablishBaseAction extends GoapAction {
                 "[EstablishBase] Registered village base at ({},{},{}) radius={} ({} blocks mapped)",
                 centerX, centerY, centerZ, radius, villageBlockCount);
 
+        commandTriggered = false;  // reset — requires @base establish again
         phase = Phase.DONE;
     }
 

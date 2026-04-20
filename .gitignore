@@ -17,8 +17,6 @@ java/emma-gameplay-logger/build/
 java/emma-gameplay-logger/.gradle/
 java/emma-endinv/build/
 java/emma-endinv/.gradle/
-java/emma-twitch/build/
-java/emma-twitch/.gradle/
 java/emma-recipe-extractor/build/
 java/emma-recipe-extractor/.gradle/
 java/dist/

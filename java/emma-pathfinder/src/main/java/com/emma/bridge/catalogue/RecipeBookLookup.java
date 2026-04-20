@@ -79,9 +79,16 @@ public final class RecipeBookLookup {
         ClientRecipeBook book = client.player.getRecipeBook();
 
         // Check if the recipe book has grown since last cache build
+        List<RecipeCollection> collections = book.getCollections();
         int totalRecipes = 0;
-        for (RecipeCollection collection : book.getCollections()) {
+        for (RecipeCollection collection : collections) {
             totalRecipes += collection.getRecipes().size();
+        }
+        // Don't cache empty results — recipes may not have synced yet
+        if (totalRecipes == 0) {
+            EmmaBridgeMod.LOGGER.debug("RecipeBookLookup: recipe book empty ({} collections), skipping cache",
+                    collections.size());
+            return;
         }
         if (craftCache != null && smeltCache != null && totalRecipes == cachedRecipeCount) return;
 

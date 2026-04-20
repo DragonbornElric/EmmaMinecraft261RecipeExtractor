@@ -63,11 +63,15 @@ import com.emma.bridge.goap.ActionRegistry;
 import com.emma.bridge.goap.GoapAction;
 import com.emma.bridge.goap.GoalSet;
 import com.emma.bridge.goap.GoapTicker;
+import com.emma.bridge.hud.GoapHudRenderer;
 import com.emma.bridge.websocket.JsonProtocol;
 import com.emma.bridge.websocket.MessageHandler;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import org.lwjgl.glfw.GLFW;
 /**
  * Emma Bridge Mod — Client-side initializer.
  *
@@ -94,6 +98,8 @@ public class EmmaBridgeClient implements ClientModInitializer {
     private com.emma.bridge.goap.actions.BuildStructureAction buildStructureAction;
     private CameraTracker cameraTracker;
     private com.emma.bridge.events.ContainerTracker containerTracker;
+    private final GoapHudRenderer goapHud = new GoapHudRenderer();
+    private boolean f7WasDown = false;
 
     @Override
     public void onInitializeClient() {
@@ -101,6 +107,9 @@ public class EmmaBridgeClient implements ClientModInitializer {
 
         // Register Emmatone tick/world event dispatch via Fabric callbacks
         emmatone.EmmatoneTickDispatcher.register();
+
+        // Register GOAP HUD overlay (F7 toggle)
+        HudElementRegistry.addLast(GoapHudRenderer.HUD_ID, goapHud);
 
         // Start WebSocket server once the client is fully ready
         ClientLifecycleEvents.CLIENT_STARTED.register(client -> {
@@ -162,6 +171,15 @@ public class EmmaBridgeClient implements ClientModInitializer {
             // Camera tracker — apply position from Emma's bridge
             if (cameraTracker != null) {
                 cameraTracker.tick();
+            }
+
+            // F7 toggle for GOAP HUD (edge-triggered: fires on press, not hold)
+            if (client.screen == null) {
+                boolean f7Down = InputConstants.isKeyDown(client.getWindow(), GLFW.GLFW_KEY_F7);
+                if (f7Down && !f7WasDown) {
+                    goapHud.toggle();
+                }
+                f7WasDown = f7Down;
             }
 
         });

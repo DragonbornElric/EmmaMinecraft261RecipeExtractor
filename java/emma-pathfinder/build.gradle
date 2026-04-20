@@ -19,6 +19,14 @@ repositories {
 	}
 }
 
+sourceSets {
+	main {
+		java {
+			exclude 'com/emma/bridge/altoclef/**'
+		}
+	}
+}
+
 loom {
 	accessWidenerPath = file("src/main/resources/emma-pathfinder.accesswidener")
 	mods {

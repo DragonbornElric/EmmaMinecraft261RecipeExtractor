@@ -79,8 +79,23 @@ public class MineBlockAction extends GoapAction {
             String[] blocks = itemToMineableBlocks(itemId, state.dimension);
             if (blocks == null) continue;
 
-            // Skip items where we don't have the required tool tier
-            if (!hasRequiredTool(state, itemId, new HashSet<>())) continue;
+            // If item is only transitively mineable (crafted item like wooden_axe),
+            // check if we already have the raw materials. Don't mine if crafting
+            // should handle the rest of the chain.
+            if (!goal.target.has("obtain_method") && !isDirectlyMineable(itemId, state.dimension)) {
+                boolean haveRawMaterials = true;
+                for (String block : blocks) {
+                    String blockItem = block.contains(":") ? block : "minecraft:" + block;
+                    if (!state.hasItem(blockItem, 1)) {
+                        haveRawMaterials = false;
+                        break;
+                    }
+                }
+                if (haveRawMaterials) continue;
+            }
+
+            // Skip items where we don't CURRENTLY have the required tool
+            if (!canMineWithCurrentTools(state, itemId)) continue;
 
             List<BlockPos> positions = new ArrayList<>();
             for (String block : blocks) {
@@ -106,6 +121,11 @@ public class MineBlockAction extends GoapAction {
 
             float proximityFactor = 1.0f / (1.0f + (float) nearestDist / 16.0f);
             float score = goal.priority * proximityFactor;
+
+            EmmaBridgeMod.LOGGER.debug("[GOAP MineBlock] Candidate goal='{}' item='{}' blocks={} nearest={} score={}",
+                    goal.id, itemId, java.util.Arrays.toString(blocks),
+                    nearestPos != null ? nearestPos.toShortString() : "?",
+                    String.format("%.2f", score));
 
             if (score > bestScore) {
                 bestScore = score;
@@ -305,6 +325,21 @@ public class MineBlockAction extends GoapAction {
     }
 
     /**
+     * Check if an item has a direct MINE entry (not transitive).
+     * Items like oak_log are directly mineable; wooden_axe is not (only transitively).
+     */
+    private static boolean isDirectlyMineable(String itemId, String currentDimension) {
+        String id = itemId.contains(":") ? itemId.split(":")[1] : itemId;
+        for (ItemRecipeEntry entry : ItemRecipeRegistry.getEntries(id)) {
+            if (entry.getObtainMethod() != ObtainMethod.MINE) continue;
+            if (!ItemRecipeRegistry.isDimensionMatch(entry.getDimension(), currentDimension)) continue;
+            String[] mineBlocks = entry.getMineBlockNames();
+            if (mineBlocks != null && mineBlocks.length > 0) return true;
+        }
+        return false;
+    }
+
+    /**
      * Check if mining blockType is a prerequisite for crafting targetItem.
      * Uses ItemRecipeRegistry's transitive dependency walker.
      */
@@ -328,6 +363,69 @@ public class MineBlockAction extends GoapAction {
     }
 
     // -- Tool requirement checking -----------------------------------------
+
+    /**
+     * Check if the player CURRENTLY has the tool needed to mine this item.
+     * Mirrors recordToolRequirement() logic — checks per-block data first,
+     * then top-level miningRequirement. Does NOT walk transitive deps.
+     * This prevents scoring for cobblestone/stone when we have no pickaxe.
+     */
+    private static boolean canMineWithCurrentTools(WorldState state, String itemId) {
+        String id = itemId.contains(":") ? itemId.split(":")[1] : itemId;
+
+        for (ItemRecipeEntry entry : ItemRecipeRegistry.getEntries(id)) {
+            if (entry.getObtainMethod() != ObtainMethod.MINE) continue;
+
+            // Check per-block data first (preferred, has tool type info)
+            ItemRecipeEntry.MineBlockInfo[] blocks = entry.getMineBlocks();
+            if (blocks != null && blocks.length > 0) {
+                for (ItemRecipeEntry.MineBlockInfo block : blocks) {
+                    String blockReq = block.getRequirement();
+                    if (blockReq == null || "HAND".equals(blockReq)) return true;
+                    String toolType = block.getToolType();
+                    if (toolType != null && hasToolTierOrBetter(state, toolType, blockReq)) {
+                        return true;
+                    }
+                }
+                return false; // no block mineable with current tools
+            }
+
+            // Fallback: top-level mining requirement
+            String req = entry.getMiningRequirement();
+            if (req == null || "HAND".equals(req)) return true;
+            return hasToolTierOrBetter(state, "PICKAXE", req);
+        }
+
+        // No MINE entry for this item — it's resolved transitively by
+        // itemToMineableBlocks(). Check the actual blocks that would be mined.
+        String[] mineBlocks = itemToMineableBlocks(itemId, state.dimension);
+        if (mineBlocks != null) {
+            for (String block : mineBlocks) {
+                String blockId = block.contains(":") ? block.split(":")[1] : block;
+                for (ItemRecipeEntry bEntry : ItemRecipeRegistry.getEntries(blockId)) {
+                    if (bEntry.getObtainMethod() != ObtainMethod.MINE) continue;
+                    ItemRecipeEntry.MineBlockInfo[] bBlocks = bEntry.getMineBlocks();
+                    if (bBlocks != null && bBlocks.length > 0) {
+                        for (ItemRecipeEntry.MineBlockInfo bi : bBlocks) {
+                            String bReq = bi.getRequirement();
+                            if (bReq == null || "HAND".equals(bReq)) return true;
+                            String toolType = bi.getToolType();
+                            if (toolType != null && hasToolTierOrBetter(state, toolType, bReq)) {
+                                return true;
+                            }
+                        }
+                    } else {
+                        String req = bEntry.getMiningRequirement();
+                        if (req == null || "HAND".equals(req)) return true;
+                        if (hasToolTierOrBetter(state, "PICKAXE", req)) return true;
+                    }
+                }
+            }
+            return false; // none of the target blocks are mineable
+        }
+
+        return true; // can't determine — don't block
+    }
 
     /** Tool tier hierarchy — higher index = better tier. */
     private static final List<String> TIER_ORDER = List.of("WOOD", "STONE", "IRON", "DIAMOND", "NETHERITE");
