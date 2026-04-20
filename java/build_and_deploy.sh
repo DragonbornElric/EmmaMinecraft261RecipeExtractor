@@ -29,9 +29,47 @@ TWITCH_JAR="emma-twitch-0.1.0.jar"
 ENDINV_JAR="emma-endinv-1.2.0.jar"
 RECIPE_JAR="emma-recipe-extractor-0.1.0.jar"
 
-EMMA_MODS="$APPDATA/PrismLauncher/instances/Emma/.minecraft/mods"
-CAMERA_MODS="$APPDATA/PrismLauncher/instances/CameraBot/.minecraft/mods"
-ELRIC_MODS="$APPDATA/PrismLauncher/instances/Elric/.minecraft/mods"
+PRISM_INSTANCES_DIR="$APPDATA/PrismLauncher/instances"
+
+# Resolve a Prism instance mods folder, supporting both MC 26.x layout
+# (<instance>/minecraft/mods) and legacy layout (<instance>/.minecraft/mods).
+# Accepts multiple instance names and returns the first existing directory.
+resolve_mods_dir() {
+    for instance_name in "$@"; do
+        local modern="$PRISM_INSTANCES_DIR/$instance_name/minecraft/mods"
+        if [[ -d "$modern" ]]; then
+            echo "$modern"
+            return 0
+        fi
+
+        local legacy="$PRISM_INSTANCES_DIR/$instance_name/.minecraft/mods"
+        if [[ -d "$legacy" ]]; then
+            echo "$legacy"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+# Try modern/renamed instances first, then legacy names.
+if EMMA_MODS_RESOLVED="$(resolve_mods_dir "Emma 26.1" "Emma")"; then
+    EMMA_MODS="$EMMA_MODS_RESOLVED"
+else
+    EMMA_MODS="$PRISM_INSTANCES_DIR/Emma 26.1/minecraft/mods"
+fi
+
+if CAMERA_MODS_RESOLVED="$(resolve_mods_dir "CameraBot 26.1" "CameraBot")"; then
+    CAMERA_MODS="$CAMERA_MODS_RESOLVED"
+else
+    CAMERA_MODS="$PRISM_INSTANCES_DIR/CameraBot/minecraft/mods"
+fi
+
+if ELRIC_MODS_RESOLVED="$(resolve_mods_dir "Elric 26.1" "Elric")"; then
+    ELRIC_MODS="$ELRIC_MODS_RESOLVED"
+else
+    ELRIC_MODS="$PRISM_INSTANCES_DIR/Elric/minecraft/mods"
+fi
 
 SERVER_HOST="192.168.0.225"
 SERVER_USER="emmaserver"
@@ -201,6 +239,12 @@ echo ""
 
 # --- Step 4: Deploy to mods folders ---
 echo "=== Deploying to PrismLauncher mods folders ==="
+
+echo "  Emma mods dir: $EMMA_MODS"
+echo "  CameraBot mods dir: $CAMERA_MODS"
+if [[ "$BRIDGE_ONLY" == false ]]; then
+    echo "  Elric mods dir: $ELRIC_MODS"
+fi
 
 # Remove old bridge mod version
 rm -f "$EMMA_MODS/emma-bridge-mod-0.1.0.jar" 2>/dev/null
