@@ -26,7 +26,6 @@ import net.minecraft.world.level.levelgen.structure.StructureSpawnOverride;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.alchemy.Potion;
-import net.minecraft.world.item.alchemy.PotionBrewing;
 import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.item.crafting.display.RecipeDisplay;
 import net.minecraft.world.item.crafting.display.SlotDisplayContext;
@@ -42,7 +41,9 @@ import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.*;
 import net.minecraft.world.level.storage.loot.functions.*;
 import net.minecraft.world.level.storage.loot.predicates.*;
-import net.minecraft.world.level.storage.loot.providers.number.*;
+import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProvider;
+import net.minecraft.world.level.storage.loot.providers.number.floats.ContextFloatProvider;
+import net.minecraft.world.attribute.EnvironmentAttributes;
 
 import java.lang.reflect.Field;
 import java.time.Instant;
@@ -76,10 +77,6 @@ public class RecipeExtractor {
     private static Field SINGLETON_FUNCTIONS;
     private static Field ENTRY_CONDITIONS;
 
-    // PotionBrewing reflection
-    private static Field POTION_BREWING_POTION_MIXES;
-    private static Field POTION_BREWING_CONTAINER_MIXES;
-    private static Field POTION_BREWING_CONTAINERS;
 
     static {
         try {
@@ -88,9 +85,9 @@ public class RecipeExtractor {
 
             LOOT_POOL_ENTRIES = LootPool.class.getDeclaredField("entries");
             LOOT_POOL_ENTRIES.setAccessible(true);
-            LOOT_POOL_CONDITIONS = LootPool.class.getDeclaredField("conditions");
+            LOOT_POOL_CONDITIONS = LootPool.class.getDeclaredField("condition");
             LOOT_POOL_CONDITIONS.setAccessible(true);
-            LOOT_POOL_FUNCTIONS = LootPool.class.getDeclaredField("functions");
+            LOOT_POOL_FUNCTIONS = LootPool.class.getDeclaredField("modifier");
             LOOT_POOL_FUNCTIONS.setAccessible(true);
             LOOT_POOL_ROLLS = LootPool.class.getDeclaredField("rolls");
             LOOT_POOL_ROLLS.setAccessible(true);
@@ -100,28 +97,23 @@ public class RecipeExtractor {
             LOOT_ITEM_HOLDER = LootItem.class.getDeclaredField("item");
             LOOT_ITEM_HOLDER.setAccessible(true);
 
-            NESTED_TABLE_CONTENTS = NestedLootTable.class.getDeclaredField("contents");
+            NESTED_TABLE_CONTENTS = NestedLootTable.class.getDeclaredField("value");
             NESTED_TABLE_CONTENTS.setAccessible(true);
 
             COMPOSITE_CHILDREN = CompositeEntryBase.class.getDeclaredField("children");
             COMPOSITE_CHILDREN.setAccessible(true);
 
-            SINGLETON_WEIGHT = LootPoolSingletonContainer.class.getDeclaredField("weight");
+            // 26.3: weight/quality moved to UniformContainerBase; an entry's conditions and
+            // functions became one optional holder each (composites wrap several).
+            SINGLETON_WEIGHT = UniformContainerBase.class.getDeclaredField("weight");
             SINGLETON_WEIGHT.setAccessible(true);
-            SINGLETON_QUALITY = LootPoolSingletonContainer.class.getDeclaredField("quality");
+            SINGLETON_QUALITY = UniformContainerBase.class.getDeclaredField("quality");
             SINGLETON_QUALITY.setAccessible(true);
-            SINGLETON_FUNCTIONS = LootPoolSingletonContainer.class.getDeclaredField("functions");
+            SINGLETON_FUNCTIONS = LootPoolEntryContainer.class.getDeclaredField("modifier");
             SINGLETON_FUNCTIONS.setAccessible(true);
 
-            ENTRY_CONDITIONS = LootPoolEntryContainer.class.getDeclaredField("conditions");
+            ENTRY_CONDITIONS = LootPoolEntryContainer.class.getDeclaredField("condition");
             ENTRY_CONDITIONS.setAccessible(true);
-
-            POTION_BREWING_POTION_MIXES = PotionBrewing.class.getDeclaredField("potionMixes");
-            POTION_BREWING_POTION_MIXES.setAccessible(true);
-            POTION_BREWING_CONTAINER_MIXES = PotionBrewing.class.getDeclaredField("containerMixes");
-            POTION_BREWING_CONTAINER_MIXES.setAccessible(true);
-            POTION_BREWING_CONTAINERS = PotionBrewing.class.getDeclaredField("containers");
-            POTION_BREWING_CONTAINERS.setAccessible(true);
         } catch (NoSuchFieldException e) {
             RecipeExtractorMod.LOGGER.error("[RecipeExtractor] Failed to init reflection", e);
         }
@@ -681,9 +673,13 @@ public class RecipeExtractor {
         for (Map.Entry<String, Set<Holder<Biome>>> dimEntry : dimensionBiomes.entrySet()) {
             String dimensionId = dimEntry.getKey();
             for (Holder<Biome> biomeHolder : dimEntry.getValue()) {
-                MobSpawnSettings spawnSettings = biomeHolder.value().getMobSettings();
-                for (MobCategory category : MobCategory.values()) {
-                    for (var weighted : spawnSettings.getMobs(category).unwrap()) {
+                // 26.3: natural spawns are an environment attribute of the biome
+                MobSpawnSettings spawnSettings = biomeHolder.value().getAttributes()
+                        .applyModifier(EnvironmentAttributes.NATURAL_MOB_SPAWNS, MobSpawnSettings.EMPTY);
+                for (MobCategory category : spawnSettings.definedCategories()) {
+                    var mobs = spawnSettings.getMobsInCategory(category);
+                    if (mobs == null) continue;
+                    for (var weighted : mobs.unwrap()) {
                         EntityType<?> entityType = weighted.value().type();
                         String entityId = BuiltInRegistries.ENTITY_TYPE.getKey(entityType).getPath();
                         map.computeIfAbsent(entityId, k -> new LinkedHashSet<>()).add(dimensionId);
@@ -882,17 +878,12 @@ public class RecipeExtractor {
                         JsonArray entryFunctions = new JsonArray();
                         JsonArray entryConditions = new JsonArray();
 
-                        if (entry instanceof LootPoolSingletonContainer) {
+                        if (entry instanceof UniformContainerBase) {
                             weight = SINGLETON_WEIGHT.getInt(entry);
                             quality = SINGLETON_QUALITY.getInt(entry);
-                            List<LootItemFunction> funcs =
-                                    (List<LootItemFunction>) SINGLETON_FUNCTIONS.get(entry);
-                            if (funcs != null) entryFunctions = serializeFunctions(funcs);
                         }
-
-                        List<LootItemCondition> conds =
-                                (List<LootItemCondition>) ENTRY_CONDITIONS.get(entry);
-                        if (conds != null) entryConditions = serializeConditions(conds);
+                        entryFunctions = serializeFunctionsSafe(entry, SINGLETON_FUNCTIONS);
+                        entryConditions = serializeConditionsSafe(entry, ENTRY_CONDITIONS);
 
                         // Merge pool-level + entry-level
                         JsonArray mergedConditions = mergeArrays(poolConditions, entryConditions);
@@ -905,18 +896,19 @@ public class RecipeExtractor {
                         ));
                     }
                 } else if (entry instanceof NestedLootTable) {
-                    Either<ResourceKey<LootTable>, LootTable> contents =
-                            (Either<ResourceKey<LootTable>, LootTable>) NESTED_TABLE_CONTENTS.get(entry);
+                    // 26.3: a HolderSet of tables (registered references or inline ones)
+                    HolderSet<LootTable> contents = (HolderSet<LootTable>) NESTED_TABLE_CONTENTS.get(entry);
                     if (contents != null) {
-                        contents.ifLeft(key -> {
-                            if (!visited.contains(key)) {
-                                visited.add(key);
-                                LootTable nested = server.reloadableRegistries().getLootTable(key);
-                                walkLootTable(nested, drops, server, visited);
+                        for (Holder<LootTable> h : contents) {
+                            var key = h.unwrapKey();
+                            if (key.isPresent()) {
+                                if (visited.add(key.get())) {
+                                    walkLootTable(server.reloadableRegistries().getLootTable(key.get()), drops, server, visited);
+                                }
+                            } else {
+                                walkLootTable(h.value(), drops, server, visited);
                             }
-                        });
-                        contents.ifRight(inlineTable ->
-                                walkLootTable(inlineTable, drops, server, visited));
+                        }
                     }
                 } else if (entry instanceof CompositeEntryBase) {
                     List<LootPoolEntryContainer> children =
@@ -942,98 +934,114 @@ public class RecipeExtractor {
 
     // ── Loot condition/function serializers ────────────────────────────
 
-    /** Safely reflect a List<LootItemCondition> field and serialize. */
-    @SuppressWarnings("unchecked")
+    /** Unwrap a Holder (26.3 wraps every loot condition, function and number provider in one). */
+    private static Object unholder(Object o) {
+        return o instanceof Holder<?> h ? h.value() : o;
+    }
+
+    /** Value of a private field by name, searching superclasses; null when absent. */
+    private static Object fieldValue(Object obj, String name) {
+        for (Class<?> c = obj.getClass(); c != null; c = c.getSuperclass()) {
+            try {
+                Field f = c.getDeclaredField(name);
+                f.setAccessible(true);
+                return f.get(obj);
+            } catch (NoSuchFieldException e) {
+                // try the superclass
+            } catch (IllegalAccessException e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 26.3: a pool or entry holds one Optional<Holder<LootItemCondition>>; a data file's list of
+     * conditions arrives as an all_of. Flattened back into a list so the output matches 26.1/26.2.
+     */
     private static JsonArray serializeConditionsSafe(Object obj, Field field) {
+        JsonArray arr = new JsonArray();
         try {
-            List<LootItemCondition> list = (List<LootItemCondition>) field.get(obj);
-            if (list != null && !list.isEmpty()) return serializeConditions(list);
+            Object v = field.get(obj);
+            if (v instanceof Optional<?> opt) v = opt.orElse(null);
+            v = unholder(v);
+            if (v instanceof AllOfCondition all) {
+                Object terms = fieldValue(all, "terms");
+                if (terms instanceof Iterable<?> it) {
+                    for (Object t : it) arr.add(serializeCondition((LootItemCondition) unholder(t)));
+                    return arr;
+                }
+            }
+            if (v instanceof LootItemCondition c) arr.add(serializeCondition(c));
         } catch (IllegalAccessException e) {
             // ignore
         }
-        return new JsonArray();
+        return arr;
     }
 
-    /** Safely reflect a List<LootItemFunction> field and serialize. */
-    @SuppressWarnings("unchecked")
+    /** 26.3: one Optional<Holder<LootItemFunction>>; a list arrives as a SequenceFunction, flattened. */
     private static JsonArray serializeFunctionsSafe(Object obj, Field field) {
+        JsonArray arr = new JsonArray();
         try {
-            List<LootItemFunction> list = (List<LootItemFunction>) field.get(obj);
-            if (list != null && !list.isEmpty()) return serializeFunctions(list);
+            Object v = field.get(obj);
+            if (v instanceof Optional<?> opt) v = opt.orElse(null);
+            addFunction(arr, unholder(v));
         } catch (IllegalAccessException e) {
             // ignore
         }
-        return new JsonArray();
+        return arr;
     }
 
-    /** Safely reflect a NumberProvider field and serialize. */
+    private static void addFunction(JsonArray arr, Object f) {
+        if (f instanceof SequenceFunction seq) {
+            Object fns = fieldValue(seq, "functions");
+            if (fns instanceof Iterable<?> it) for (Object x : it) addFunction(arr, unholder(x));
+        } else if (f instanceof LootItemFunction fn) {
+            arr.add(serializeFunction(fn));
+        }
+    }
+
+    /** Safely reflect a number provider field (26.3: Holder<ContextIntProvider/ContextFloatProvider>). */
     private static JsonObject serializeNumberProviderSafe(Object obj, Field field) {
         try {
             Object np = field.get(obj);
-            if (np instanceof NumberProvider numberProvider) {
-                return serializeNumberProvider(numberProvider);
-            }
+            if (np != null) return serializeNumberProvider(np);
         } catch (IllegalAccessException e) {
             // ignore
         }
         return null;
     }
 
-    /** Serialize a NumberProvider to JSON. */
-    private static JsonObject serializeNumberProvider(NumberProvider np) {
+    /** Serialize a 26.3 int/float number provider to the 26.1 JSON shape. */
+    private static JsonObject serializeNumberProvider(Object npObj) {
+        Object np = unholder(npObj);
         JsonObject obj = new JsonObject();
-        if (np instanceof ConstantValue cv) {
+        if (np instanceof net.minecraft.world.level.storage.loot.providers.number.floats.ConstantValue cv) {
             obj.addProperty("type", "constant");
-            // ConstantValue has a float value field
-            try {
-                Field valueField = ConstantValue.class.getDeclaredField("value");
-                valueField.setAccessible(true);
-                obj.addProperty("value", valueField.getFloat(cv));
-            } catch (Exception e) {
-                obj.addProperty("value", 0);
-            }
-        } else if (np instanceof UniformGenerator ug) {
+            obj.addProperty("value", cv.value());
+        } else if (np instanceof net.minecraft.world.level.storage.loot.providers.number.ints.ConstantValue cv) {
+            obj.addProperty("type", "constant");
+            obj.addProperty("value", (float) cv.value());
+        } else if (np instanceof net.minecraft.world.level.storage.loot.providers.number.floats.UniformGenerator ug) {
             obj.addProperty("type", "uniform");
-            try {
-                Field minField = UniformGenerator.class.getDeclaredField("min");
-                Field maxField = UniformGenerator.class.getDeclaredField("max");
-                minField.setAccessible(true);
-                maxField.setAccessible(true);
-                Object minNp = minField.get(ug);
-                Object maxNp = maxField.get(ug);
-                if (minNp instanceof NumberProvider mnp) obj.add("min", serializeNumberProvider(mnp));
-                if (maxNp instanceof NumberProvider mxp) obj.add("max", serializeNumberProvider(mxp));
-            } catch (Exception e) {
-                obj.addProperty("error", "reflection_failed");
-            }
-        } else if (np instanceof BinomialDistributionGenerator bg) {
+            obj.add("min", serializeNumberProvider(ug.min()));
+            obj.add("max", serializeNumberProvider(ug.max()));
+        } else if (np instanceof net.minecraft.world.level.storage.loot.providers.number.ints.UniformGenerator ug) {
+            obj.addProperty("type", "uniform");
+            obj.add("min", serializeNumberProvider(ug.min()));
+            obj.add("max", serializeNumberProvider(ug.max()));
+        } else if (np instanceof net.minecraft.world.level.storage.loot.providers.number.ints.BinomialDistributionGenerator bg) {
             obj.addProperty("type", "binomial");
-            try {
-                Field nField = BinomialDistributionGenerator.class.getDeclaredField("n");
-                Field pField = BinomialDistributionGenerator.class.getDeclaredField("p");
-                nField.setAccessible(true);
-                pField.setAccessible(true);
-                Object nNp = nField.get(bg);
-                Object pNp = pField.get(bg);
-                if (nNp instanceof NumberProvider nnp) obj.add("n", serializeNumberProvider(nnp));
-                if (pNp instanceof NumberProvider pnp) obj.add("p", serializeNumberProvider(pnp));
-            } catch (Exception e) {
-                obj.addProperty("error", "reflection_failed");
-            }
+            obj.add("n", serializeNumberProvider(bg.n()));
+            obj.add("p", serializeNumberProvider(bg.p()));
+        } else if (np == null) {
+            obj.addProperty("type", "unknown");
+            obj.addProperty("class", "null");
         } else {
             obj.addProperty("type", "unknown");
             obj.addProperty("class", np.getClass().getSimpleName());
         }
         return obj;
-    }
-
-    /** Serialize a list of loot conditions. */
-    private static JsonArray serializeConditions(List<LootItemCondition> conditions) {
-        JsonArray arr = new JsonArray();
-        for (LootItemCondition cond : conditions) {
-            arr.add(serializeCondition(cond));
-        }
-        return arr;
     }
 
     /** Serialize a single loot condition. */
@@ -1042,65 +1050,39 @@ public class RecipeExtractor {
 
         if (cond instanceof InvertedLootItemCondition inverted) {
             obj.addProperty("type", "inverted");
-            try {
-                Field termField = InvertedLootItemCondition.class.getDeclaredField("term");
-                termField.setAccessible(true);
-                LootItemCondition inner = (LootItemCondition) termField.get(inverted);
-                if (inner != null) obj.add("term", serializeCondition(inner));
-            } catch (Exception e) {
-                obj.addProperty("error", "reflection_failed");
-            }
+            Object inner = unholder(fieldValue(inverted, "term"));
+            if (inner instanceof LootItemCondition c) obj.add("term", serializeCondition(c));
         } else if (cond instanceof AllOfCondition || cond instanceof AnyOfCondition) {
             obj.addProperty("type", cond instanceof AllOfCondition ? "all_of" : "any_of");
-            try {
-                // CompositeLootItemCondition has a "terms" field
-                Field termsField = cond.getClass().getSuperclass().getDeclaredField("terms");
-                termsField.setAccessible(true);
-                @SuppressWarnings("unchecked")
-                List<LootItemCondition> terms = (List<LootItemCondition>) termsField.get(cond);
-                if (terms != null) {
-                    JsonArray termsArr = new JsonArray();
-                    for (LootItemCondition t : terms) termsArr.add(serializeCondition(t));
-                    obj.add("terms", termsArr);
-                }
-            } catch (Exception e) {
-                obj.addProperty("error", "reflection_failed");
+            Object terms = fieldValue(cond, "terms");
+            if (terms instanceof Iterable<?> it) {
+                JsonArray termsArr = new JsonArray();
+                for (Object t : it) termsArr.add(serializeCondition((LootItemCondition) unholder(t)));
+                obj.add("terms", termsArr);
             }
         } else if (cond instanceof MatchTool) {
             obj.addProperty("type", "match_tool");
-            // MatchTool has a predicate field — extract what we can
-            try {
-                Field predField = MatchTool.class.getDeclaredField("predicate");
-                predField.setAccessible(true);
-                Object pred = predField.get(cond);
-                if (pred != null) obj.addProperty("predicate", pred.toString());
-            } catch (Exception e) {
-                // best effort
-            }
+            Object pred = fieldValue(cond, "predicate");
+            if (pred != null) obj.addProperty("predicate", pred.toString());
         } else if (cond instanceof LootItemRandomChanceCondition) {
             obj.addProperty("type", "random_chance");
-            try {
-                Field chanceField = LootItemRandomChanceCondition.class.getDeclaredField("probability");
-                chanceField.setAccessible(true);
-                obj.addProperty("chance", chanceField.getFloat(cond));
-            } catch (Exception e) {
-                // best effort
+            JsonObject chance = serializeNumberProvider(fieldValue(cond, "chance"));
+            if ("constant".equals(chance.get("type").getAsString())) {
+                obj.addProperty("chance", chance.get("value").getAsFloat());
+            } else {
+                obj.add("chance", chance);
             }
         } else if (cond instanceof LootItemKilledByPlayerCondition) {
             obj.addProperty("type", "killed_by_player");
         } else if (cond instanceof ExplosionCondition) {
             obj.addProperty("type", "survives_explosion");
-        } else if (cond instanceof LootItemBlockStatePropertyCondition) {
+        } else if (cond instanceof MatchBlock mb) {
+            // 26.3: replaces LootItemBlockStatePropertyCondition (a BlockPredicate on the broken block)
             obj.addProperty("type", "block_state_property");
-            try {
-                Field blockField = LootItemBlockStatePropertyCondition.class.getDeclaredField("block");
-                blockField.setAccessible(true);
-                Object blockHolder = blockField.get(cond);
-                if (blockHolder instanceof Holder<?> h) {
-                    obj.addProperty("block", h.getRegisteredName());
-                }
-            } catch (Exception e) {
-                // best effort
+            Object pred = fieldValue(mb, "predicate");
+            Object blocks = pred == null ? null : fieldValue(pred, "blocks");
+            if (blocks instanceof Optional<?> o && o.orElse(null) instanceof HolderSet<?> set && set.size() > 0) {
+                obj.addProperty("block", set.get(0).getRegisteredName());
             }
         } else if (cond instanceof LootItemEntityPropertyCondition) {
             obj.addProperty("type", "entity_property");
@@ -1114,7 +1096,7 @@ public class RecipeExtractor {
             obj.addProperty("type", "damage_source");
         } else if (cond instanceof BonusLevelTableCondition) {
             obj.addProperty("type", "table_bonus");
-        } else if (cond instanceof ValueCheckCondition) {
+        } else if (cond instanceof IntValueCheck || cond instanceof FloatValueCheck) {
             obj.addProperty("type", "value_check");
         } else {
             // Catch-all: record the class name so we know what we missed
@@ -1125,65 +1107,26 @@ public class RecipeExtractor {
         return obj;
     }
 
-    /** Serialize a list of loot functions. */
-    private static JsonArray serializeFunctions(List<LootItemFunction> functions) {
-        JsonArray arr = new JsonArray();
-        for (LootItemFunction func : functions) {
-            arr.add(serializeFunction(func));
-        }
-        return arr;
-    }
-
     /** Serialize a single loot function. */
     private static JsonObject serializeFunction(LootItemFunction func) {
         JsonObject obj = new JsonObject();
 
-        if (func instanceof SetItemCountFunction setCount) {
+        if (func instanceof SetItemCountFunction) {
             obj.addProperty("type", "set_count");
-            try {
-                Field valueField = SetItemCountFunction.class.getDeclaredField("value");
-                valueField.setAccessible(true);
-                Object np = valueField.get(setCount);
-                if (np instanceof NumberProvider numberProvider) {
-                    obj.add("count", serializeNumberProvider(numberProvider));
-                }
-            } catch (Exception e) {
-                // best effort
-            }
+            Object np = fieldValue(func, "count");
+            if (np != null) obj.add("count", serializeNumberProvider(np));
         } else if (func instanceof ApplyBonusCount) {
             obj.addProperty("type", "apply_bonus");
-            try {
-                Field enchField = ApplyBonusCount.class.getDeclaredField("enchantment");
-                enchField.setAccessible(true);
-                Object enchHolder = enchField.get(func);
-                if (enchHolder instanceof Holder<?> h) {
-                    obj.addProperty("enchantment", h.getRegisteredName());
-                }
-            } catch (Exception e) {
-                // best effort
-            }
+            if (fieldValue(func, "enchantment") instanceof Holder<?> h) obj.addProperty("enchantment", h.getRegisteredName());
         } else if (func instanceof ApplyExplosionDecay) {
             obj.addProperty("type", "explosion_decay");
         } else if (func instanceof SmeltItemFunction) {
             obj.addProperty("type", "furnace_smelt");
         } else if (func instanceof EnchantedCountIncreaseFunction) {
             obj.addProperty("type", "enchanted_count_increase");
-            try {
-                Field enchField = EnchantedCountIncreaseFunction.class.getDeclaredField("enchantment");
-                enchField.setAccessible(true);
-                Object enchHolder = enchField.get(func);
-                if (enchHolder instanceof Holder<?> h) {
-                    obj.addProperty("enchantment", h.getRegisteredName());
-                }
-                Field countField = EnchantedCountIncreaseFunction.class.getDeclaredField("value");
-                countField.setAccessible(true);
-                Object np = countField.get(func);
-                if (np instanceof NumberProvider numberProvider) {
-                    obj.add("count", serializeNumberProvider(numberProvider));
-                }
-            } catch (Exception e) {
-                // best effort
-            }
+            if (fieldValue(func, "enchantment") instanceof Holder<?> h) obj.addProperty("enchantment", h.getRegisteredName());
+            Object np = fieldValue(func, "count");
+            if (np != null) obj.add("count", serializeNumberProvider(np));
         } else if (func instanceof SetItemDamageFunction) {
             obj.addProperty("type", "set_damage");
         } else if (func instanceof LimitCount) {
@@ -1198,88 +1141,73 @@ public class RecipeExtractor {
 
     // ── Part D: Brewing recipes via PotionBrewing reflection ─────────
 
-    @SuppressWarnings("unchecked")
+    /**
+     * 26.3: brewing is data-driven, one minecraft:brewing recipe per container (potion, splash,
+     * lingering) instead of PotionBrewing's mixes that applied to any container. Mapped back to the
+     * 26.1 shape: a potion-to-potion recipe on the plain potion is a BREW_POTION mix, a recipe that
+     * changes the container item (gunpowder, dragon's breath) is a BREW_CONTAINER mix, and every
+     * input container is listed in BREW_CONTAINERS. The splash/lingering copies of each potion mix
+     * are skipped (in 26.1 one mix covered all three).
+     */
     private static int extractBrewing(MinecraftServer server, JsonArray entries) {
         int count = 0;
-
+        Set<String> seen = new HashSet<>();
+        Set<String> containers = new LinkedHashSet<>();
         try {
-            // Get PotionBrewing instance — bootstrap creates the vanilla instance
-            PotionBrewing brewing = server.potionBrewing();
+            for (RecipeHolder<?> holder : server.getRecipeManager().getRecipes()) {
+                if (!(holder.value() instanceof BrewingRecipe br)) continue;
+                PotionIngredient in = br.getInput();
+                ItemStack out = br.getOutput().create();
+                String outItem = itemPath(out.getItem());
+                String outPotion = out.has(DataComponents.POTION_CONTENTS)
+                        ? out.get(DataComponents.POTION_CONTENTS).potion().map(h -> holderToString(h)).orElse(null) : null;
+                JsonArray inItems = serializeIngredient(in.ingredient());
+                JsonArray reagent = serializeIngredient(br.getReagent().ingredient());
+                for (var e : inItems) containers.add(e.getAsString());
+                List<String> inPotions = new ArrayList<>();
+                in.potions().flatMap(pp -> pp.potions()).ifPresent(set -> set.forEach(h -> inPotions.add(holderToString(h))));
+                String inItem = inItems.isEmpty() ? null : inItems.get(0).getAsString();
+                if (inItem == null) continue;
 
-            // Extract potion mixes: from(Potion) + ingredient(Item) → to(Potion)
-            List<?> potionMixes = (List<?>) POTION_BREWING_POTION_MIXES.get(brewing);
-            if (potionMixes != null) {
-                for (Object mix : potionMixes) {
-                    JsonObject entry = serializeBrewingMix(mix, "BREW_POTION");
-                    if (entry != null) {
+                if (!inItem.equals(outItem)) {
+                    String key = "C|" + inItem + "|" + reagent + "|" + outItem;
+                    if (!seen.add(key)) continue;
+                    JsonObject entry = new JsonObject();
+                    entry.addProperty("itemId", outItem);
+                    entry.addProperty("obtainMethod", "BREW_CONTAINER");
+                    entry.addProperty("brewFrom", inItem);
+                    entry.add("brewIngredient", reagent);
+                    entry.addProperty("brewTo", outItem);
+                    entry.add("itemMatches", itemMatchesArray(outItem));
+                    entries.add(entry);
+                    count++;
+                } else if ("potion".equals(inItem) && outPotion != null) {
+                    for (String from : inPotions) {
+                        String key = "P|" + from + "|" + reagent + "|" + outPotion;
+                        if (!seen.add(key)) continue;
+                        JsonObject entry = new JsonObject();
+                        entry.addProperty("itemId", outPotion);
+                        entry.addProperty("obtainMethod", "BREW_POTION");
+                        entry.addProperty("brewFrom", from);
+                        entry.add("brewIngredient", reagent);
+                        entry.addProperty("brewTo", outPotion);
+                        entry.add("itemMatches", itemMatchesArray(outPotion));
                         entries.add(entry);
                         count++;
                     }
                 }
             }
-
-            // Extract container mixes: from(Item) + ingredient(Item) → to(Item)
-            List<?> containerMixes = (List<?>) POTION_BREWING_CONTAINER_MIXES.get(brewing);
-            if (containerMixes != null) {
-                for (Object mix : containerMixes) {
-                    JsonObject entry = serializeBrewingMix(mix, "BREW_CONTAINER");
-                    if (entry != null) {
-                        entries.add(entry);
-                        count++;
-                    }
-                }
-            }
-
-            // Extract valid containers (bottles that can be used in brewing)
-            List<Ingredient> containers = (List<Ingredient>) POTION_BREWING_CONTAINERS.get(brewing);
-            if (containers != null) {
-                JsonObject containerEntry = new JsonObject();
-                containerEntry.addProperty("obtainMethod", "BREW_CONTAINERS");
-                JsonArray containerArr = new JsonArray();
-                for (Ingredient ing : containers) {
-                    JsonArray items = serializeIngredient(ing);
-                    if (!items.isEmpty()) containerArr.addAll(items);
-                }
-                containerEntry.add("containers", containerArr);
-                entries.add(containerEntry);
-                count++;
-            }
-
+            JsonObject containerEntry = new JsonObject();
+            containerEntry.addProperty("obtainMethod", "BREW_CONTAINERS");
+            JsonArray containerArr = new JsonArray();
+            containers.forEach(containerArr::add);
+            containerEntry.add("containers", containerArr);
+            entries.add(containerEntry);
+            count++;
         } catch (Exception e) {
             RecipeExtractorMod.LOGGER.warn("[RecipeExtractor] Error extracting brewing data", e);
         }
-
         return count;
-    }
-
-    /** Serialize a PotionBrewing.Mix record via reflection. Works for both potion and container mixes. */
-    private static JsonObject serializeBrewingMix(Object mix, String obtainMethod) {
-        try {
-            // Mix is a record with from(), ingredient(), to() accessors
-            var fromMethod = mix.getClass().getMethod("from");
-            var ingredientMethod = mix.getClass().getMethod("ingredient");
-            var toMethod = mix.getClass().getMethod("to");
-
-            Object from = fromMethod.invoke(mix);
-            Ingredient ingredient = (Ingredient) ingredientMethod.invoke(mix);
-            Object to = toMethod.invoke(mix);
-
-            String fromId = holderToString(from);
-            String toId = holderToString(to);
-            if (fromId == null || toId == null) return null;
-
-            JsonObject entry = new JsonObject();
-            entry.addProperty("itemId", toId);
-            entry.addProperty("obtainMethod", obtainMethod);
-            entry.addProperty("brewFrom", fromId);
-            entry.add("brewIngredient", serializeIngredient(ingredient));
-            entry.addProperty("brewTo", toId);
-            entry.add("itemMatches", itemMatchesArray(toId));
-            return entry;
-        } catch (Exception e) {
-            RecipeExtractorMod.LOGGER.warn("[RecipeExtractor] Error serializing brewing mix: {}", mix.getClass().getSimpleName(), e);
-            return null;
-        }
     }
 
     /** Extract the path string from a Holder<?> — works for Holder<Potion> and Holder<Item>. */
