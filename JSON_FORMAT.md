@@ -84,8 +84,7 @@ Fields:
 Notes:
 
 - On `extractorVersion >= 3`, shaped recipes preserve the full trimmed bounding box and use `null` entries for empty slots inside that box. This is required if you want to reconstruct exact layouts such as pickaxes, boats, axes, and doors.
-- The generator now requires `extractorVersion >= 3` for `TaskCatalogue.java` generation.
-- Older `extractorVersion = 2` files compacted shaped recipes and therefore lost some empty-slot positions. They are useful only for archival inspection, not for supported catalogue generation.
+- Older `extractorVersion = 2` files compacted shaped recipes and therefore lost some empty-slot positions. Use version 3 output when grid positions matter.
 
 ### Smelting and Cooking
 
