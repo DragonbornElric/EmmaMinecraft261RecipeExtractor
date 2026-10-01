@@ -1,0 +1,5892 @@
+{
+  "aliases": {
+    "book_and_quill": "writable_book",
+    "diamond_pick": "diamond_pickaxe",
+    "door": "wooden_door",
+    "eye_of_ender": "ender_eye",
+    "fence": "wooden_fence",
+    "fence_gate": "wooden_fence_gate",
+    "gold_pick": "golden_pickaxe",
+    "iron_pick": "iron_pickaxe",
+    "lapis": "lapis_lazuli",
+    "minecart_with_chest": "chest_minecart",
+    "minecart_with_furnace": "furnace_minecart",
+    "minecart_with_hopper": "hopper_minecart",
+    "minecart_with_tnt": "tnt_minecart",
+    "netherite_pick": "netherite_pickaxe",
+    "netherite_upgrade": "netherite_upgrade_smithing_template",
+    "stone_pick": "stone_pickaxe",
+    "trapdoor": "wooden_trapdoor",
+    "wooden_pick": "wooden_pickaxe"
+  },
+  "allKnownNames": [
+    "acacia_boat",
+    "acacia_button",
+    "acacia_door",
+    "acacia_fence",
+    "acacia_fence_gate",
+    "acacia_hanging_sign",
+    "acacia_leaves",
+    "acacia_log",
+    "acacia_planks",
+    "acacia_pressure_plate",
+    "acacia_sapling",
+    "acacia_sign",
+    "acacia_slab",
+    "acacia_stairs",
+    "acacia_stripped_logs",
+    "acacia_trapdoor",
+    "activator_rail",
+    "allium",
+    "amethyst_block",
+    "amethyst_shard",
+    "ancient_debris",
+    "andesite",
+    "andesite_slab",
+    "andesite_stairs",
+    "andesite_wall",
+    "anvil",
+    "apple",
+    "armor_stand",
+    "arrow",
+    "azure_bluet",
+    "baked_potato",
+    "bamboo",
+    "bamboo_block",
+    "bamboo_boat",
+    "bamboo_button",
+    "bamboo_door",
+    "bamboo_fence",
+    "bamboo_fence_gate",
+    "bamboo_hanging_sign",
+    "bamboo_leaves",
+    "bamboo_log",
+    "bamboo_planks",
+    "bamboo_pressure_plate",
+    "bamboo_sign",
+    "bamboo_slab",
+    "bamboo_stairs",
+    "bamboo_stripped_logs",
+    "bamboo_trapdoor",
+    "barrel",
+    "basalt",
+    "bed",
+    "beef",
+    "beehive",
+    "beetroot",
+    "beetroot_seeds",
+    "beetroot_soup",
+    "bell",
+    "birch_boat",
+    "birch_button",
+    "birch_door",
+    "birch_fence",
+    "birch_fence_gate",
+    "birch_hanging_sign",
+    "birch_leaves",
+    "birch_log",
+    "birch_planks",
+    "birch_pressure_plate",
+    "birch_sapling",
+    "birch_sign",
+    "birch_slab",
+    "birch_stairs",
+    "birch_stripped_logs",
+    "birch_trapdoor",
+    "black_bed",
+    "black_wool",
+    "blackstone",
+    "blackstone_slab",
+    "blackstone_stairs",
+    "blackstone_wall",
+    "blast_furnace",
+    "blaze_powder",
+    "blaze_rod",
+    "blue_bed",
+    "blue_orchid",
+    "blue_wool",
+    "boat",
+    "bone",
+    "bone_meal",
+    "book",
+    "book_and_quill",
+    "bookshelf",
+    "bow",
+    "bowl",
+    "bread",
+    "brewing_stand",
+    "brick",
+    "brick_slab",
+    "brick_stairs",
+    "brick_wall",
+    "bricks",
+    "brown_bed",
+    "brown_mushroom",
+    "brown_wool",
+    "brush",
+    "bucket",
+    "cactus",
+    "cake",
+    "calcite",
+    "campfire",
+    "candle",
+    "carrot",
+    "carrot_on_a_stick",
+    "cartography_table",
+    "carved_pumpkin",
+    "cauldron",
+    "chain",
+    "charcoal",
+    "cherry_boat",
+    "cherry_button",
+    "cherry_door",
+    "cherry_fence",
+    "cherry_fence_gate",
+    "cherry_hanging_sign",
+    "cherry_leaves",
+    "cherry_log",
+    "cherry_planks",
+    "cherry_pressure_plate",
+    "cherry_sapling",
+    "cherry_sign",
+    "cherry_slab",
+    "cherry_stairs",
+    "cherry_stripped_logs",
+    "cherry_trapdoor",
+    "chest",
+    "chest_minecart",
+    "chicken",
+    "chiseled_bookshelf",
+    "chiseled_deepslate",
+    "chiseled_nether_bricks",
+    "chiseled_quartz_block",
+    "chiseled_red_sandstone",
+    "chiseled_sandstone",
+    "chiseled_stone_bricks",
+    "clay",
+    "clay_ball",
+    "clock",
+    "coal",
+    "coal_block",
+    "coarse_dirt",
+    "cobbled_deepslate",
+    "cobbled_deepslate_slab",
+    "cobbled_deepslate_stairs",
+    "cobbled_deepslate_wall",
+    "cobblestone",
+    "cobblestone_slab",
+    "cobblestone_stairs",
+    "cobblestone_wall",
+    "cobweb",
+    "cocoa_beans",
+    "cod",
+    "comparator",
+    "compass",
+    "composter",
+    "cooked_beef",
+    "cooked_chicken",
+    "cooked_cod",
+    "cooked_mutton",
+    "cooked_porkchop",
+    "cooked_rabbit",
+    "cooked_salmon",
+    "cookie",
+    "copper_block",
+    "copper_ingot",
+    "cornflower",
+    "cracked_deepslate_bricks",
+    "cracked_deepslate_tiles",
+    "cracked_nether_bricks",
+    "cracked_polished_blackstone_bricks",
+    "cracked_stone_bricks",
+    "crafting_table",
+    "crimson_boat",
+    "crimson_button",
+    "crimson_door",
+    "crimson_fence",
+    "crimson_fence_gate",
+    "crimson_fungus",
+    "crimson_hanging_sign",
+    "crimson_leaves",
+    "crimson_log",
+    "crimson_planks",
+    "crimson_pressure_plate",
+    "crimson_roots",
+    "crimson_sign",
+    "crimson_slab",
+    "crimson_stairs",
+    "crimson_stripped_logs",
+    "crimson_trapdoor",
+    "crossbow",
+    "cut_copper",
+    "cut_copper_slab",
+    "cut_copper_stairs",
+    "cut_red_sandstone",
+    "cut_red_sandstone_slab",
+    "cut_sandstone",
+    "cut_sandstone_slab",
+    "cyan_bed",
+    "cyan_wool",
+    "dandelion",
+    "dark_oak_boat",
+    "dark_oak_button",
+    "dark_oak_door",
+    "dark_oak_fence",
+    "dark_oak_fence_gate",
+    "dark_oak_hanging_sign",
+    "dark_oak_leaves",
+    "dark_oak_log",
+    "dark_oak_planks",
+    "dark_oak_pressure_plate",
+    "dark_oak_sapling",
+    "dark_oak_sign",
+    "dark_oak_slab",
+    "dark_oak_stairs",
+    "dark_oak_stripped_logs",
+    "dark_oak_trapdoor",
+    "daylight_detector",
+    "dead_bush",
+    "decorated_pot",
+    "deepslate",
+    "deepslate_brick_slab",
+    "deepslate_brick_stairs",
+    "deepslate_brick_wall",
+    "deepslate_bricks",
+    "deepslate_tile_slab",
+    "deepslate_tile_stairs",
+    "deepslate_tile_wall",
+    "deepslate_tiles",
+    "detector_rail",
+    "diamond",
+    "diamond_axe",
+    "diamond_block",
+    "diamond_boots",
+    "diamond_chestplate",
+    "diamond_helmet",
+    "diamond_hoe",
+    "diamond_leggings",
+    "diamond_pick",
+    "diamond_pickaxe",
+    "diamond_shovel",
+    "diamond_sword",
+    "diorite",
+    "diorite_slab",
+    "diorite_stairs",
+    "diorite_wall",
+    "dirt",
+    "dispenser",
+    "door",
+    "dripstone_block",
+    "dropper",
+    "egg",
+    "emerald",
+    "emerald_block",
+    "enchanting_table",
+    "ender_chest",
+    "ender_eye",
+    "ender_pearl",
+    "eye_of_ender",
+    "feather",
+    "fence",
+    "fence_gate",
+    "fermented_spider_eye",
+    "fern",
+    "fire_charge",
+    "fishing_rod",
+    "fletching_table",
+    "flint",
+    "flint_and_steel",
+    "flower",
+    "flower_banner_pattern",
+    "flower_pot",
+    "furnace",
+    "furnace_minecart",
+    "gilded_blackstone",
+    "glass",
+    "glass_bottle",
+    "glass_pane",
+    "glistering_melon_slice",
+    "glow_ink_sac",
+    "glow_item_frame",
+    "glow_lichen",
+    "glowstone",
+    "glowstone_dust",
+    "gold_block",
+    "gold_ingot",
+    "gold_nugget",
+    "gold_pick",
+    "golden_apple",
+    "golden_axe",
+    "golden_boots",
+    "golden_carrot",
+    "golden_chestplate",
+    "golden_helmet",
+    "golden_hoe",
+    "golden_leggings",
+    "golden_pickaxe",
+    "golden_shovel",
+    "golden_sword",
+    "granite",
+    "granite_slab",
+    "granite_stairs",
+    "granite_wall",
+    "grass",
+    "gravel",
+    "gray_bed",
+    "gray_wool",
+    "green_bed",
+    "green_dye",
+    "green_wool",
+    "grindstone",
+    "gunpowder",
+    "hanging_sign",
+    "hay_block",
+    "heavy_weighted_pressure_plate",
+    "honeycomb",
+    "honeycomb_block",
+    "hopper",
+    "hopper_minecart",
+    "ink_sac",
+    "iron_axe",
+    "iron_bars",
+    "iron_block",
+    "iron_boots",
+    "iron_chestplate",
+    "iron_door",
+    "iron_helmet",
+    "iron_hoe",
+    "iron_ingot",
+    "iron_leggings",
+    "iron_nugget",
+    "iron_pick",
+    "iron_pickaxe",
+    "iron_shovel",
+    "iron_sword",
+    "iron_trapdoor",
+    "item_frame",
+    "jack_o_lantern",
+    "jukebox",
+    "jungle_boat",
+    "jungle_button",
+    "jungle_door",
+    "jungle_fence",
+    "jungle_fence_gate",
+    "jungle_hanging_sign",
+    "jungle_leaves",
+    "jungle_log",
+    "jungle_planks",
+    "jungle_pressure_plate",
+    "jungle_sapling",
+    "jungle_sign",
+    "jungle_slab",
+    "jungle_stairs",
+    "jungle_stripped_logs",
+    "jungle_trapdoor",
+    "ladder",
+    "lantern",
+    "lapis",
+    "lapis_block",
+    "lapis_lazuli",
+    "large_fern",
+    "lava_bucket",
+    "lead",
+    "leather",
+    "leather_boots",
+    "leather_chestplate",
+    "leather_helmet",
+    "leather_horse_armor",
+    "leather_leggings",
+    "leaves",
+    "lectern",
+    "lever",
+    "light_blue_bed",
+    "light_blue_wool",
+    "light_gray_bed",
+    "light_gray_wool",
+    "light_weighted_pressure_plate",
+    "lightning_rod",
+    "lilac",
+    "lily_of_the_valley",
+    "lily_pad",
+    "lime_bed",
+    "lime_wool",
+    "lodestone",
+    "log",
+    "loom",
+    "magenta_bed",
+    "magenta_wool",
+    "magma_block",
+    "magma_cream",
+    "mangrove_boat",
+    "mangrove_button",
+    "mangrove_door",
+    "mangrove_fence",
+    "mangrove_fence_gate",
+    "mangrove_hanging_sign",
+    "mangrove_leaves",
+    "mangrove_log",
+    "mangrove_planks",
+    "mangrove_pressure_plate",
+    "mangrove_propagule",
+    "mangrove_sign",
+    "mangrove_slab",
+    "mangrove_stairs",
+    "mangrove_stripped_logs",
+    "mangrove_trapdoor",
+    "map",
+    "melon",
+    "melon_seeds",
+    "melon_slice",
+    "milk",
+    "minecart",
+    "minecart_with_chest",
+    "minecart_with_furnace",
+    "minecart_with_hopper",
+    "minecart_with_tnt",
+    "mossy_cobblestone",
+    "mossy_cobblestone_slab",
+    "mossy_cobblestone_stairs",
+    "mossy_cobblestone_wall",
+    "mossy_stone_brick_slab",
+    "mossy_stone_brick_stairs",
+    "mossy_stone_brick_wall",
+    "mossy_stone_bricks",
+    "mushroom",
+    "mushroom_stew",
+    "mutton",
+    "nether_brick",
+    "nether_brick_fence",
+    "nether_brick_slab",
+    "nether_brick_stairs",
+    "nether_brick_wall",
+    "nether_bricks",
+    "nether_wart",
+    "nether_wart_block",
+    "netherite_axe",
+    "netherite_boots",
+    "netherite_chestplate",
+    "netherite_helmet",
+    "netherite_hoe",
+    "netherite_ingot",
+    "netherite_leggings",
+    "netherite_pick",
+    "netherite_pickaxe",
+    "netherite_scrap",
+    "netherite_shovel",
+    "netherite_sword",
+    "netherite_upgrade",
+    "netherite_upgrade_smithing_template",
+    "netherrack",
+    "note_block",
+    "oak_boat",
+    "oak_button",
+    "oak_door",
+    "oak_fence",
+    "oak_fence_gate",
+    "oak_hanging_sign",
+    "oak_leaves",
+    "oak_log",
+    "oak_planks",
+    "oak_pressure_plate",
+    "oak_sapling",
+    "oak_sign",
+    "oak_slab",
+    "oak_stairs",
+    "oak_stripped_logs",
+    "oak_trapdoor",
+    "observer",
+    "obsidian",
+    "orange_bed",
+    "orange_tulip",
+    "orange_wool",
+    "oxeye_daisy",
+    "painting",
+    "paper",
+    "peony",
+    "pink_bed",
+    "pink_tulip",
+    "pink_wool",
+    "piston",
+    "planks",
+    "pointed_dripstone",
+    "poisonous_potato",
+    "polished_andesite",
+    "polished_andesite_slab",
+    "polished_andesite_stairs",
+    "polished_basalt",
+    "polished_blackstone",
+    "polished_blackstone_brick_slab",
+    "polished_blackstone_brick_stairs",
+    "polished_blackstone_brick_wall",
+    "polished_blackstone_bricks",
+    "polished_blackstone_button",
+    "polished_blackstone_pressure_plate",
+    "polished_blackstone_slab",
+    "polished_blackstone_stairs",
+    "polished_blackstone_wall",
+    "polished_deepslate",
+    "polished_deepslate_slab",
+    "polished_deepslate_stairs",
+    "polished_deepslate_wall",
+    "polished_diorite",
+    "polished_diorite_slab",
+    "polished_diorite_stairs",
+    "polished_granite",
+    "polished_granite_slab",
+    "polished_granite_stairs",
+    "poppy",
+    "porkchop",
+    "potato",
+    "powered_rail",
+    "pumpkin",
+    "pumpkin_pie",
+    "purple_bed",
+    "purple_wool",
+    "quartz",
+    "quartz_block",
+    "quartz_bricks",
+    "quartz_pillar",
+    "quartz_slab",
+    "quartz_stairs",
+    "rabbit",
+    "rabbit_foot",
+    "rabbit_hide",
+    "rabbit_stew",
+    "rail",
+    "raw_copper",
+    "raw_copper_block",
+    "raw_gold",
+    "raw_gold_block",
+    "raw_iron",
+    "raw_iron_block",
+    "red_bed",
+    "red_mushroom",
+    "red_nether_brick_slab",
+    "red_nether_brick_stairs",
+    "red_nether_brick_wall",
+    "red_nether_bricks",
+    "red_sand",
+    "red_sandstone",
+    "red_sandstone_slab",
+    "red_sandstone_stairs",
+    "red_sandstone_wall",
+    "red_tulip",
+    "red_wool",
+    "redstone",
+    "redstone_block",
+    "redstone_lamp",
+    "redstone_torch",
+    "repeater",
+    "rose_bush",
+    "rotten_flesh",
+    "salmon",
+    "sand",
+    "sandstone",
+    "sandstone_slab",
+    "sandstone_stairs",
+    "sandstone_wall",
+    "sapling",
+    "shears",
+    "shield",
+    "shroomlight",
+    "sign",
+    "slime_ball",
+    "slime_block",
+    "smithing_table",
+    "smoker",
+    "smooth_basalt",
+    "smooth_quartz",
+    "smooth_quartz_slab",
+    "smooth_quartz_stairs",
+    "smooth_red_sandstone",
+    "smooth_red_sandstone_slab",
+    "smooth_red_sandstone_stairs",
+    "smooth_sandstone",
+    "smooth_sandstone_slab",
+    "smooth_sandstone_stairs",
+    "smooth_stone",
+    "smooth_stone_slab",
+    "soul_campfire",
+    "soul_lantern",
+    "soul_sand",
+    "soul_soil",
+    "soul_torch",
+    "spider_eye",
+    "spruce_boat",
+    "spruce_button",
+    "spruce_door",
+    "spruce_fence",
+    "spruce_fence_gate",
+    "spruce_hanging_sign",
+    "spruce_leaves",
+    "spruce_log",
+    "spruce_planks",
+    "spruce_pressure_plate",
+    "spruce_sapling",
+    "spruce_sign",
+    "spruce_slab",
+    "spruce_stairs",
+    "spruce_stripped_logs",
+    "spruce_trapdoor",
+    "spyglass",
+    "stick",
+    "sticky_piston",
+    "stone",
+    "stone_axe",
+    "stone_brick_slab",
+    "stone_brick_stairs",
+    "stone_brick_wall",
+    "stone_bricks",
+    "stone_button",
+    "stone_hoe",
+    "stone_pick",
+    "stone_pickaxe",
+    "stone_pressure_plate",
+    "stone_shovel",
+    "stone_slab",
+    "stone_stairs",
+    "stone_sword",
+    "string",
+    "stripped_logs",
+    "sugar",
+    "sugar_cane",
+    "sunflower",
+    "suspicious_stew",
+    "tall_grass",
+    "target",
+    "tinted_glass",
+    "tnt",
+    "tnt_minecart",
+    "torch",
+    "trapdoor",
+    "trapped_chest",
+    "tripwire_hook",
+    "tuff",
+    "twisting_vines",
+    "vine",
+    "warped_boat",
+    "warped_button",
+    "warped_door",
+    "warped_fence",
+    "warped_fence_gate",
+    "warped_fungus",
+    "warped_fungus_on_a_stick",
+    "warped_hanging_sign",
+    "warped_leaves",
+    "warped_log",
+    "warped_planks",
+    "warped_pressure_plate",
+    "warped_roots",
+    "warped_sign",
+    "warped_slab",
+    "warped_stairs",
+    "warped_stripped_logs",
+    "warped_trapdoor",
+    "warped_wart_block",
+    "water_bucket",
+    "weeping_vines",
+    "wheat",
+    "wheat_seeds",
+    "white_bed",
+    "white_tulip",
+    "white_wool",
+    "wither_skeleton_skull",
+    "wooden_axe",
+    "wooden_button",
+    "wooden_door",
+    "wooden_fence",
+    "wooden_fence_gate",
+    "wooden_hoe",
+    "wooden_pick",
+    "wooden_pickaxe",
+    "wooden_pressure_plate",
+    "wooden_shovel",
+    "wooden_slab",
+    "wooden_stairs",
+    "wooden_sword",
+    "wooden_trapdoor",
+    "wool",
+    "writable_book",
+    "yellow_bed",
+    "yellow_wool"
+  ],
+  "armorEntries": [
+    {
+      "name": "leather_helmet",
+      "parent": "leather",
+      "source": "armor"
+    },
+    {
+      "name": "leather_chestplate",
+      "parent": "leather",
+      "source": "armor"
+    },
+    {
+      "name": "leather_leggings",
+      "parent": "leather",
+      "source": "armor"
+    },
+    {
+      "name": "leather_boots",
+      "parent": "leather",
+      "source": "armor"
+    },
+    {
+      "name": "iron_helmet",
+      "parent": "iron",
+      "source": "armor"
+    },
+    {
+      "name": "iron_chestplate",
+      "parent": "iron",
+      "source": "armor"
+    },
+    {
+      "name": "iron_leggings",
+      "parent": "iron",
+      "source": "armor"
+    },
+    {
+      "name": "iron_boots",
+      "parent": "iron",
+      "source": "armor"
+    },
+    {
+      "name": "golden_helmet",
+      "parent": "golden",
+      "source": "armor"
+    },
+    {
+      "name": "golden_chestplate",
+      "parent": "golden",
+      "source": "armor"
+    },
+    {
+      "name": "golden_leggings",
+      "parent": "golden",
+      "source": "armor"
+    },
+    {
+      "name": "golden_boots",
+      "parent": "golden",
+      "source": "armor"
+    },
+    {
+      "name": "diamond_helmet",
+      "parent": "diamond",
+      "source": "armor"
+    },
+    {
+      "name": "diamond_chestplate",
+      "parent": "diamond",
+      "source": "armor"
+    },
+    {
+      "name": "diamond_leggings",
+      "parent": "diamond",
+      "source": "armor"
+    },
+    {
+      "name": "diamond_boots",
+      "parent": "diamond",
+      "source": "armor"
+    }
+  ],
+  "colorTasksSuffixes": [
+    "bed",
+    "wool"
+  ],
+  "derivedColorNames": [
+    "black_bed",
+    "black_wool",
+    "blue_bed",
+    "blue_wool",
+    "brown_bed",
+    "brown_wool",
+    "cyan_bed",
+    "cyan_wool",
+    "gray_bed",
+    "gray_wool",
+    "green_bed",
+    "green_wool",
+    "light_blue_bed",
+    "light_blue_wool",
+    "light_gray_bed",
+    "light_gray_wool",
+    "lime_bed",
+    "lime_wool",
+    "magenta_bed",
+    "magenta_wool",
+    "orange_bed",
+    "orange_wool",
+    "pink_bed",
+    "pink_wool",
+    "purple_bed",
+    "purple_wool",
+    "red_bed",
+    "red_wool",
+    "white_bed",
+    "white_wool",
+    "yellow_bed",
+    "yellow_wool"
+  ],
+  "derivedWoodNames": [
+    "acacia_boat",
+    "acacia_button",
+    "acacia_door",
+    "acacia_fence",
+    "acacia_fence_gate",
+    "acacia_hanging_sign",
+    "acacia_leaves",
+    "acacia_log",
+    "acacia_planks",
+    "acacia_pressure_plate",
+    "acacia_sign",
+    "acacia_slab",
+    "acacia_stairs",
+    "acacia_stripped_logs",
+    "acacia_trapdoor",
+    "bamboo_boat",
+    "bamboo_button",
+    "bamboo_door",
+    "bamboo_fence",
+    "bamboo_fence_gate",
+    "bamboo_hanging_sign",
+    "bamboo_leaves",
+    "bamboo_log",
+    "bamboo_planks",
+    "bamboo_pressure_plate",
+    "bamboo_sign",
+    "bamboo_slab",
+    "bamboo_stairs",
+    "bamboo_stripped_logs",
+    "bamboo_trapdoor",
+    "birch_boat",
+    "birch_button",
+    "birch_door",
+    "birch_fence",
+    "birch_fence_gate",
+    "birch_hanging_sign",
+    "birch_leaves",
+    "birch_log",
+    "birch_planks",
+    "birch_pressure_plate",
+    "birch_sign",
+    "birch_slab",
+    "birch_stairs",
+    "birch_stripped_logs",
+    "birch_trapdoor",
+    "cherry_boat",
+    "cherry_button",
+    "cherry_door",
+    "cherry_fence",
+    "cherry_fence_gate",
+    "cherry_hanging_sign",
+    "cherry_leaves",
+    "cherry_log",
+    "cherry_planks",
+    "cherry_pressure_plate",
+    "cherry_sign",
+    "cherry_slab",
+    "cherry_stairs",
+    "cherry_stripped_logs",
+    "cherry_trapdoor",
+    "crimson_boat",
+    "crimson_button",
+    "crimson_door",
+    "crimson_fence",
+    "crimson_fence_gate",
+    "crimson_hanging_sign",
+    "crimson_leaves",
+    "crimson_log",
+    "crimson_planks",
+    "crimson_pressure_plate",
+    "crimson_sign",
+    "crimson_slab",
+    "crimson_stairs",
+    "crimson_stripped_logs",
+    "crimson_trapdoor",
+    "dark_oak_boat",
+    "dark_oak_button",
+    "dark_oak_door",
+    "dark_oak_fence",
+    "dark_oak_fence_gate",
+    "dark_oak_hanging_sign",
+    "dark_oak_leaves",
+    "dark_oak_log",
+    "dark_oak_planks",
+    "dark_oak_pressure_plate",
+    "dark_oak_sign",
+    "dark_oak_slab",
+    "dark_oak_stairs",
+    "dark_oak_stripped_logs",
+    "dark_oak_trapdoor",
+    "jungle_boat",
+    "jungle_button",
+    "jungle_door",
+    "jungle_fence",
+    "jungle_fence_gate",
+    "jungle_hanging_sign",
+    "jungle_leaves",
+    "jungle_log",
+    "jungle_planks",
+    "jungle_pressure_plate",
+    "jungle_sign",
+    "jungle_slab",
+    "jungle_stairs",
+    "jungle_stripped_logs",
+    "jungle_trapdoor",
+    "mangrove_boat",
+    "mangrove_button",
+    "mangrove_door",
+    "mangrove_fence",
+    "mangrove_fence_gate",
+    "mangrove_hanging_sign",
+    "mangrove_leaves",
+    "mangrove_log",
+    "mangrove_planks",
+    "mangrove_pressure_plate",
+    "mangrove_sign",
+    "mangrove_slab",
+    "mangrove_stairs",
+    "mangrove_stripped_logs",
+    "mangrove_trapdoor",
+    "oak_boat",
+    "oak_button",
+    "oak_door",
+    "oak_fence",
+    "oak_fence_gate",
+    "oak_hanging_sign",
+    "oak_leaves",
+    "oak_log",
+    "oak_planks",
+    "oak_pressure_plate",
+    "oak_sign",
+    "oak_slab",
+    "oak_stairs",
+    "oak_stripped_logs",
+    "oak_trapdoor",
+    "spruce_boat",
+    "spruce_button",
+    "spruce_door",
+    "spruce_fence",
+    "spruce_fence_gate",
+    "spruce_hanging_sign",
+    "spruce_leaves",
+    "spruce_log",
+    "spruce_planks",
+    "spruce_pressure_plate",
+    "spruce_sign",
+    "spruce_slab",
+    "spruce_stairs",
+    "spruce_stripped_logs",
+    "spruce_trapdoor",
+    "warped_boat",
+    "warped_button",
+    "warped_door",
+    "warped_fence",
+    "warped_fence_gate",
+    "warped_hanging_sign",
+    "warped_leaves",
+    "warped_log",
+    "warped_planks",
+    "warped_pressure_plate",
+    "warped_sign",
+    "warped_slab",
+    "warped_stairs",
+    "warped_stripped_logs",
+    "warped_trapdoor"
+  ],
+  "explicitEntries": [
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeWall",
+      "modifiers": [],
+      "name": "cobblestone_wall",
+      "stringArgs": [
+        "cobblestone_wall",
+        "cobblestone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeWall",
+      "modifiers": [],
+      "name": "stone_brick_wall",
+      "stringArgs": [
+        "stone_brick_wall",
+        "stone_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeWall",
+      "modifiers": [],
+      "name": "mossy_stone_brick_wall",
+      "stringArgs": [
+        "mossy_stone_brick_wall",
+        "mossy_stone_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeWall",
+      "modifiers": [],
+      "name": "mossy_cobblestone_wall",
+      "stringArgs": [
+        "mossy_cobblestone_wall",
+        "mossy_cobblestone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeWall",
+      "modifiers": [],
+      "name": "andesite_wall",
+      "stringArgs": [
+        "andesite_wall",
+        "andesite"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeWall",
+      "modifiers": [],
+      "name": "granite_wall",
+      "stringArgs": [
+        "granite_wall",
+        "granite"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeWall",
+      "modifiers": [],
+      "name": "diorite_wall",
+      "stringArgs": [
+        "diorite_wall",
+        "diorite"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeWall",
+      "modifiers": [],
+      "name": "sandstone_wall",
+      "stringArgs": [
+        "sandstone_wall",
+        "sandstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeWall",
+      "modifiers": [],
+      "name": "red_sandstone_wall",
+      "stringArgs": [
+        "red_sandstone_wall",
+        "red_sandstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeWall",
+      "modifiers": [],
+      "name": "nether_brick_wall",
+      "stringArgs": [
+        "nether_brick_wall",
+        "nether_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeWall",
+      "modifiers": [],
+      "name": "red_nether_brick_wall",
+      "stringArgs": [
+        "red_nether_brick_wall",
+        "red_nether_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeWall",
+      "modifiers": [],
+      "name": "blackstone_wall",
+      "stringArgs": [
+        "blackstone_wall",
+        "blackstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeWall",
+      "modifiers": [],
+      "name": "polished_blackstone_wall",
+      "stringArgs": [
+        "polished_blackstone_wall",
+        "polished_blackstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeWall",
+      "modifiers": [],
+      "name": "polished_blackstone_brick_wall",
+      "stringArgs": [
+        "polished_blackstone_brick_wall",
+        "polished_blackstone_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeWall",
+      "modifiers": [],
+      "name": "cobbled_deepslate_wall",
+      "stringArgs": [
+        "cobbled_deepslate_wall",
+        "cobbled_deepslate"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeWall",
+      "modifiers": [],
+      "name": "polished_deepslate_wall",
+      "stringArgs": [
+        "polished_deepslate_wall",
+        "polished_deepslate"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeWall",
+      "modifiers": [],
+      "name": "deepslate_brick_wall",
+      "stringArgs": [
+        "deepslate_brick_wall",
+        "deepslate_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeWall",
+      "modifiers": [],
+      "name": "deepslate_tile_wall",
+      "stringArgs": [
+        "deepslate_tile_wall",
+        "deepslate_tiles"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "cobblestone_slab",
+      "stringArgs": [
+        "cobblestone_slab",
+        "cobblestone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "stone_slab",
+      "stringArgs": [
+        "stone_slab",
+        "stone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "smooth_stone_slab",
+      "stringArgs": [
+        "smooth_stone_slab",
+        "smooth_stone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "stone_brick_slab",
+      "stringArgs": [
+        "stone_brick_slab",
+        "stone_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "mossy_stone_brick_slab",
+      "stringArgs": [
+        "mossy_stone_brick_slab",
+        "mossy_stone_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "mossy_cobblestone_slab",
+      "stringArgs": [
+        "mossy_cobblestone_slab",
+        "mossy_cobblestone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "andesite_slab",
+      "stringArgs": [
+        "andesite_slab",
+        "andesite"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "granite_slab",
+      "stringArgs": [
+        "granite_slab",
+        "granite"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "diorite_slab",
+      "stringArgs": [
+        "diorite_slab",
+        "diorite"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "polished_andesite_slab",
+      "stringArgs": [
+        "polished_andesite_slab",
+        "polished_andesite"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "polished_granite_slab",
+      "stringArgs": [
+        "polished_granite_slab",
+        "polished_granite"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "polished_diorite_slab",
+      "stringArgs": [
+        "polished_diorite_slab",
+        "polished_diorite"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "sandstone_slab",
+      "stringArgs": [
+        "sandstone_slab",
+        "sandstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "cut_sandstone_slab",
+      "stringArgs": [
+        "cut_sandstone_slab",
+        "cut_sandstone_slab",
+        "cut_sandstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "smooth_sandstone_slab",
+      "stringArgs": [
+        "smooth_sandstone_slab",
+        "smooth_sandstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "red_sandstone_slab",
+      "stringArgs": [
+        "red_sandstone_slab",
+        "red_sandstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "cut_red_sandstone_slab",
+      "stringArgs": [
+        "cut_red_sandstone_slab",
+        "cut_red_sandstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "smooth_red_sandstone_slab",
+      "stringArgs": [
+        "smooth_red_sandstone_slab",
+        "smooth_red_sandstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "nether_brick_slab",
+      "stringArgs": [
+        "nether_brick_slab",
+        "nether_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "red_nether_brick_slab",
+      "stringArgs": [
+        "red_nether_brick_slab",
+        "red_nether_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "quartz_slab",
+      "stringArgs": [
+        "quartz_slab",
+        "quartz_block"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "smooth_quartz_slab",
+      "stringArgs": [
+        "smooth_quartz_slab",
+        "smooth_quartz"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "blackstone_slab",
+      "stringArgs": [
+        "blackstone_slab",
+        "blackstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "polished_blackstone_slab",
+      "stringArgs": [
+        "polished_blackstone_slab",
+        "polished_blackstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "polished_blackstone_brick_slab",
+      "stringArgs": [
+        "polished_blackstone_brick_slab",
+        "polished_blackstone_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "cut_copper_slab",
+      "stringArgs": [
+        "cut_copper_slab",
+        "cut_copper"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "cobbled_deepslate_slab",
+      "stringArgs": [
+        "cobbled_deepslate_slab",
+        "cobbled_deepslate"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "polished_deepslate_slab",
+      "stringArgs": [
+        "polished_deepslate_slab",
+        "polished_deepslate"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "deepslate_brick_slab",
+      "stringArgs": [
+        "deepslate_brick_slab",
+        "deepslate_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "deepslate_tile_slab",
+      "stringArgs": [
+        "deepslate_tile_slab",
+        "deepslate_tiles"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeSlab",
+      "modifiers": [],
+      "name": "brick_slab",
+      "stringArgs": [
+        "brick_slab"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mob",
+      "modifiers": [],
+      "name": "bone",
+      "stringArgs": [
+        "bone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mob",
+      "modifiers": [],
+      "name": "gunpowder",
+      "stringArgs": [
+        "gunpowder"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mob",
+      "modifiers": [],
+      "name": "spider_eye",
+      "stringArgs": [
+        "spider_eye"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mob",
+      "modifiers": [],
+      "name": "leather",
+      "stringArgs": [
+        "leather"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mob",
+      "modifiers": [],
+      "name": "feather",
+      "stringArgs": [
+        "feather"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mob",
+      "modifiers": [],
+      "name": "rotten_flesh",
+      "stringArgs": [
+        "rotten_flesh"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mob",
+      "modifiers": [],
+      "name": "rabbit_foot",
+      "stringArgs": [
+        "rabbit_foot"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mob",
+      "modifiers": [],
+      "name": "rabbit_hide",
+      "stringArgs": [
+        "rabbit_hide"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mob",
+      "modifiers": [],
+      "name": "slime_ball",
+      "stringArgs": [
+        "slime_ball"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mob",
+      "modifiers": [
+        "forceDimension:NETHER"
+      ],
+      "name": "wither_skeleton_skull",
+      "stringArgs": [
+        "wither_skeleton_skull"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mob",
+      "modifiers": [],
+      "name": "ink_sac",
+      "stringArgs": [
+        "ink_sac"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mob",
+      "modifiers": [],
+      "name": "glow_ink_sac",
+      "stringArgs": [
+        "glow_ink_sac"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mob",
+      "modifiers": [],
+      "name": "string",
+      "stringArgs": [
+        "string"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2Block",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "glowstone",
+      "stringArgs": [
+        "glowstone",
+        "glowstone_dust"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2Block",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "clay",
+      "stringArgs": [
+        "clay",
+        "clay_ball"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2Block",
+      "modifiers": [],
+      "name": "polished_andesite",
+      "stringArgs": [
+        "polished_andesite",
+        "andesite"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2Block",
+      "modifiers": [],
+      "name": "polished_diorite",
+      "stringArgs": [
+        "polished_diorite",
+        "diorite"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2Block",
+      "modifiers": [],
+      "name": "polished_granite",
+      "stringArgs": [
+        "polished_granite",
+        "granite"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2Block",
+      "modifiers": [],
+      "name": "quartz_block",
+      "stringArgs": [
+        "quartz_block",
+        "quartz"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2Block",
+      "modifiers": [],
+      "name": "polished_blackstone",
+      "stringArgs": [
+        "polished_blackstone",
+        "blackstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2Block",
+      "modifiers": [],
+      "name": "polished_blackstone_bricks",
+      "stringArgs": [
+        "polished_blackstone_bricks",
+        "polished_blackstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2Block",
+      "modifiers": [],
+      "name": "polished_basalt",
+      "stringArgs": [
+        "polished_basalt",
+        "basalt"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2Block",
+      "modifiers": [],
+      "name": "polished_deepslate",
+      "stringArgs": [
+        "polished_deepslate",
+        "cobbled_deepslate"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2Block",
+      "modifiers": [],
+      "name": "deepslate_bricks",
+      "stringArgs": [
+        "deepslate_bricks",
+        "polished_deepslate"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2Block",
+      "modifiers": [],
+      "name": "deepslate_tiles",
+      "stringArgs": [
+        "deepslate_tiles",
+        "deepslate_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2Block",
+      "modifiers": [],
+      "name": "cut_copper",
+      "stringArgs": [
+        "cut_copper",
+        "copper_block"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2Block",
+      "modifiers": [],
+      "name": "cut_sandstone",
+      "stringArgs": [
+        "cut_sandstone",
+        "sandstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2Block",
+      "modifiers": [],
+      "name": "cut_red_sandstone",
+      "stringArgs": [
+        "cut_red_sandstone",
+        "red_sandstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2Block",
+      "modifiers": [],
+      "name": "quartz_bricks",
+      "stringArgs": [
+        "quartz_bricks",
+        "quartz_block"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2Block",
+      "modifiers": [],
+      "name": "stone_bricks",
+      "stringArgs": [
+        "stone_bricks",
+        "stone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2Block",
+      "modifiers": [],
+      "name": "red_nether_bricks",
+      "stringArgs": [
+        "red_nether_bricks",
+        "nether_wart"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2Block",
+      "modifiers": [],
+      "name": "honeycomb_block",
+      "stringArgs": [
+        "honeycomb_block"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2Block",
+      "modifiers": [],
+      "name": "iron_trapdoor",
+      "stringArgs": [
+        "iron_trapdoor"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2Block",
+      "modifiers": [],
+      "name": "bricks",
+      "stringArgs": [
+        "bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smith",
+      "modifiers": [],
+      "name": "netherite_helmet",
+      "stringArgs": [
+        "netherite_helmet",
+        "netherite_ingot",
+        "diamond_helmet"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smith",
+      "modifiers": [],
+      "name": "netherite_chestplate",
+      "stringArgs": [
+        "netherite_chestplate",
+        "netherite_ingot",
+        "diamond_chestplate"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smith",
+      "modifiers": [],
+      "name": "netherite_leggings",
+      "stringArgs": [
+        "netherite_leggings",
+        "netherite_ingot",
+        "diamond_leggings"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smith",
+      "modifiers": [],
+      "name": "netherite_boots",
+      "stringArgs": [
+        "netherite_boots",
+        "netherite_ingot",
+        "diamond_boots"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smith",
+      "modifiers": [],
+      "name": "netherite_pickaxe",
+      "stringArgs": [
+        "netherite_pickaxe",
+        "netherite_ingot",
+        "diamond_pickaxe"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smith",
+      "modifiers": [],
+      "name": "netherite_axe",
+      "stringArgs": [
+        "netherite_axe",
+        "netherite_ingot",
+        "diamond_axe"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smith",
+      "modifiers": [],
+      "name": "netherite_shovel",
+      "stringArgs": [
+        "netherite_shovel",
+        "netherite_ingot",
+        "diamond_shovel"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smith",
+      "modifiers": [],
+      "name": "netherite_sword",
+      "stringArgs": [
+        "netherite_sword",
+        "netherite_ingot",
+        "diamond_sword"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smith",
+      "modifiers": [],
+      "name": "netherite_hoe",
+      "stringArgs": [
+        "netherite_hoe",
+        "netherite_ingot",
+        "diamond_hoe"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "cobblestone_stairs",
+      "stringArgs": [
+        "cobblestone_stairs",
+        "cobblestone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "stone_stairs",
+      "stringArgs": [
+        "stone_stairs",
+        "stone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "stone_brick_stairs",
+      "stringArgs": [
+        "stone_brick_stairs",
+        "stone_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "mossy_stone_brick_stairs",
+      "stringArgs": [
+        "mossy_stone_brick_stairs",
+        "mossy_stone_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "mossy_cobblestone_stairs",
+      "stringArgs": [
+        "mossy_cobblestone_stairs",
+        "mossy_cobblestone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "andesite_stairs",
+      "stringArgs": [
+        "andesite_stairs",
+        "andesite"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "granite_stairs",
+      "stringArgs": [
+        "granite_stairs",
+        "granite"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "diorite_stairs",
+      "stringArgs": [
+        "diorite_stairs",
+        "diorite"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "polished_andesite_stairs",
+      "stringArgs": [
+        "polished_andesite_stairs",
+        "polished_andesite"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "polished_granite_stairs",
+      "stringArgs": [
+        "polished_granite_stairs",
+        "polished_granite"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "polished_diorite_stairs",
+      "stringArgs": [
+        "polished_diorite_stairs",
+        "polished_diorite"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "sandstone_stairs",
+      "stringArgs": [
+        "sandstone_stairs",
+        "sandstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "smooth_sandstone_stairs",
+      "stringArgs": [
+        "smooth_sandstone_stairs",
+        "smooth_sandstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "red_sandstone_stairs",
+      "stringArgs": [
+        "red_sandstone_stairs",
+        "red_sandstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "smooth_red_sandstone_stairs",
+      "stringArgs": [
+        "smooth_red_sandstone_stairs",
+        "smooth_red_sandstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "nether_brick_stairs",
+      "stringArgs": [
+        "nether_brick_stairs",
+        "nether_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "red_nether_brick_stairs",
+      "stringArgs": [
+        "red_nether_brick_stairs",
+        "red_nether_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "quartz_stairs",
+      "stringArgs": [
+        "quartz_stairs",
+        "quartz_block"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "smooth_quartz_stairs",
+      "stringArgs": [
+        "smooth_quartz_stairs",
+        "smooth_quartz"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "blackstone_stairs",
+      "stringArgs": [
+        "blackstone_stairs",
+        "blackstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "polished_blackstone_stairs",
+      "stringArgs": [
+        "polished_blackstone_stairs",
+        "polished_blackstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "polished_blackstone_brick_stairs",
+      "stringArgs": [
+        "polished_blackstone_brick_stairs",
+        "polished_blackstone_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "cut_copper_stairs",
+      "stringArgs": [
+        "cut_copper_stairs",
+        "cut_copper"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "cobbled_deepslate_stairs",
+      "stringArgs": [
+        "cobbled_deepslate_stairs",
+        "cobbled_deepslate"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "polished_deepslate_stairs",
+      "stringArgs": [
+        "polished_deepslate_stairs",
+        "polished_deepslate"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "deepslate_brick_stairs",
+      "stringArgs": [
+        "deepslate_brick_stairs",
+        "deepslate_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "deepslate_tile_stairs",
+      "stringArgs": [
+        "deepslate_tile_stairs",
+        "deepslate_tiles"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "brick_stairs",
+      "stringArgs": [
+        "brick_stairs"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipeStairs",
+      "modifiers": [],
+      "name": "brick_wall",
+      "stringArgs": [
+        "brick_wall",
+        "brick"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shear",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "cobweb",
+      "stringArgs": [
+        "cobweb"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shear",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "leaves",
+      "stringArgs": [
+        "leaves"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shear",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "vine",
+      "stringArgs": [
+        "vine"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shear",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "grass",
+      "stringArgs": [
+        "grass"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shear",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "lily_pad",
+      "stringArgs": [
+        "lily_pad"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shear",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "tall_grass",
+      "stringArgs": [
+        "tall_grass"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shear",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "fern",
+      "stringArgs": [
+        "fern"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shear",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "large_fern",
+      "stringArgs": [
+        "large_fern"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shear",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "dead_bush",
+      "stringArgs": [
+        "dead_bush"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shear",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "glow_lichen",
+      "stringArgs": [
+        "glow_lichen"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "alias",
+      "modifiers": [],
+      "name": "lapis",
+      "stringArgs": [
+        "lapis",
+        "lapis_lazuli"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "alias",
+      "modifiers": [],
+      "name": "netherite_upgrade",
+      "stringArgs": [
+        "netherite_upgrade",
+        "netherite_upgrade_smithing_template"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "alias",
+      "modifiers": [],
+      "name": "book_and_quill",
+      "stringArgs": [
+        "book_and_quill",
+        "writable_book"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "alias",
+      "modifiers": [],
+      "name": "eye_of_ender",
+      "stringArgs": [
+        "eye_of_ender",
+        "ender_eye"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "alias",
+      "modifiers": [],
+      "name": "wooden_pick",
+      "stringArgs": [
+        "wooden_pick",
+        "wooden_pickaxe"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "alias",
+      "modifiers": [],
+      "name": "stone_pick",
+      "stringArgs": [
+        "stone_pick",
+        "stone_pickaxe"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "alias",
+      "modifiers": [],
+      "name": "iron_pick",
+      "stringArgs": [
+        "iron_pick",
+        "iron_pickaxe"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "alias",
+      "modifiers": [],
+      "name": "gold_pick",
+      "stringArgs": [
+        "gold_pick",
+        "golden_pickaxe"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "alias",
+      "modifiers": [],
+      "name": "diamond_pick",
+      "stringArgs": [
+        "diamond_pick",
+        "diamond_pickaxe"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "alias",
+      "modifiers": [],
+      "name": "netherite_pick",
+      "stringArgs": [
+        "netherite_pick",
+        "netherite_pickaxe"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "alias",
+      "modifiers": [],
+      "name": "door",
+      "stringArgs": [
+        "door",
+        "wooden_door"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "alias",
+      "modifiers": [],
+      "name": "trapdoor",
+      "stringArgs": [
+        "trapdoor",
+        "wooden_trapdoor"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "alias",
+      "modifiers": [],
+      "name": "fence",
+      "stringArgs": [
+        "fence",
+        "wooden_fence"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "alias",
+      "modifiers": [],
+      "name": "fence_gate",
+      "stringArgs": [
+        "fence_gate",
+        "wooden_fence_gate"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "alias",
+      "modifiers": [],
+      "name": "minecart_with_chest",
+      "stringArgs": [
+        "minecart_with_chest",
+        "chest_minecart"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "alias",
+      "modifiers": [],
+      "name": "minecart_with_furnace",
+      "stringArgs": [
+        "minecart_with_furnace",
+        "furnace_minecart"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "alias",
+      "modifiers": [],
+      "name": "minecart_with_hopper",
+      "stringArgs": [
+        "minecart_with_hopper",
+        "hopper_minecart"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "alias",
+      "modifiers": [],
+      "name": "minecart_with_tnt",
+      "stringArgs": [
+        "minecart_with_tnt",
+        "tnt_minecart"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "crop",
+      "modifiers": [],
+      "name": "carrot",
+      "stringArgs": [
+        "carrot"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "crop",
+      "modifiers": [],
+      "name": "potato",
+      "stringArgs": [
+        "potato"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "crop",
+      "modifiers": [],
+      "name": "poisonous_potato",
+      "stringArgs": [
+        "poisonous_potato"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "crop",
+      "modifiers": [],
+      "name": "beetroot",
+      "stringArgs": [
+        "beetroot"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "crop",
+      "modifiers": [],
+      "name": "beetroot_seeds",
+      "stringArgs": [
+        "beetroot_seeds"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "netherite_ingot",
+      "stringArgs": [
+        "netherite_ingot",
+        "netherite_scrap",
+        "netherite_scrap",
+        "netherite_scrap",
+        "netherite_scrap",
+        "gold_ingot",
+        "gold_ingot",
+        "gold_ingot",
+        "gold_ingot"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "glistering_melon_slice",
+      "stringArgs": [
+        "glistering_melon_slice",
+        "melon_slice"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "nether_brick_fence",
+      "stringArgs": [
+        "nether_brick_fence"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "brush",
+      "stringArgs": [
+        "brush",
+        "feather",
+        "copper_ingot"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "paper",
+      "stringArgs": [
+        "paper",
+        "sugar_cane",
+        "sugar_cane",
+        "sugar_cane"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "bowl",
+      "stringArgs": [
+        "bowl"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "fire_charge",
+      "stringArgs": [
+        "fire_charge",
+        "blaze_powder",
+        "coal",
+        "gunpowder"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "bow",
+      "stringArgs": [
+        "bow",
+        "string",
+        "string",
+        "string"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "arrow",
+      "stringArgs": [
+        "arrow",
+        "flint",
+        "feather"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "bucket",
+      "stringArgs": [
+        "bucket"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "compass",
+      "stringArgs": [
+        "compass",
+        "redstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "shield",
+      "stringArgs": [
+        "shield"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "clock",
+      "stringArgs": [
+        "clock",
+        "redstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "map",
+      "stringArgs": [
+        "map",
+        "compass"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "fishing_rod",
+      "stringArgs": [
+        "fishing_rod",
+        "string",
+        "string"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "spyglass",
+      "stringArgs": [
+        "spyglass",
+        "amethyst_shard",
+        "copper_ingot",
+        "copper_ingot"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "glass_bottle",
+      "stringArgs": [
+        "glass_bottle",
+        "glass",
+        "glass",
+        "glass"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "leather_horse_armor",
+      "stringArgs": [
+        "leather_horse_armor"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "lead",
+      "stringArgs": [
+        "lead",
+        "string",
+        "string",
+        "string",
+        "slime_ball",
+        "string"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "beehive",
+      "stringArgs": [
+        "beehive"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "smithing_table",
+      "stringArgs": [
+        "smithing_table",
+        "iron_ingot",
+        "iron_ingot"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "grindstone",
+      "stringArgs": [
+        "grindstone",
+        "stone_slab"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "furnace",
+      "stringArgs": [
+        "furnace"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "dropper",
+      "stringArgs": [
+        "dropper",
+        "redstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "dispenser",
+      "stringArgs": [
+        "dispenser",
+        "bow",
+        "redstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "brewing_stand",
+      "stringArgs": [
+        "brewing_stand",
+        "blaze_rod"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "piston",
+      "stringArgs": [
+        "piston",
+        "iron_ingot",
+        "redstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "observer",
+      "stringArgs": [
+        "observer",
+        "redstone",
+        "redstone",
+        "quartz"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "chest",
+      "stringArgs": [
+        "chest"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "anvil",
+      "stringArgs": [
+        "anvil"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "cauldron",
+      "stringArgs": [
+        "cauldron"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "minecart",
+      "stringArgs": [
+        "minecart"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "iron_door",
+      "stringArgs": [
+        "iron_door"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "iron_bars",
+      "stringArgs": [
+        "iron_bars"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "blast_furnace",
+      "stringArgs": [
+        "blast_furnace",
+        "furnace"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "armor_stand",
+      "stringArgs": [
+        "armor_stand",
+        "smooth_stone_slab"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "enchanting_table",
+      "stringArgs": [
+        "enchanting_table",
+        "book",
+        "diamond",
+        "diamond"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "ender_chest",
+      "stringArgs": [
+        "ender_chest",
+        "ender_eye"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "decorated_pot",
+      "stringArgs": [
+        "decorated_pot"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "flower_pot",
+      "stringArgs": [
+        "flower_pot"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "ladder",
+      "stringArgs": [
+        "ladder"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "jukebox",
+      "stringArgs": [
+        "jukebox",
+        "diamond"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "note_block",
+      "stringArgs": [
+        "note_block",
+        "redstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "redstone_lamp",
+      "stringArgs": [
+        "redstone_lamp",
+        "redstone",
+        "redstone",
+        "glowstone",
+        "redstone",
+        "redstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "bookshelf",
+      "stringArgs": [
+        "bookshelf",
+        "book",
+        "book",
+        "book"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "glass_pane",
+      "stringArgs": [
+        "glass_pane"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "target",
+      "stringArgs": [
+        "target",
+        "redstone",
+        "redstone",
+        "hay_block",
+        "redstone",
+        "redstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "campfire",
+      "stringArgs": [
+        "campfire",
+        "coal",
+        "log",
+        "log",
+        "log"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "soul_campfire",
+      "stringArgs": [
+        "soul_campfire",
+        "soul_soil",
+        "log",
+        "log",
+        "log"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "soul_torch",
+      "stringArgs": [
+        "soul_torch",
+        "coal",
+        "soul_soil"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "smoker",
+      "stringArgs": [
+        "smoker",
+        "furnace"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "lantern",
+      "stringArgs": [
+        "lantern",
+        "torch"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "soul_lantern",
+      "stringArgs": [
+        "soul_lantern",
+        "soul_torch"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "chain",
+      "stringArgs": [
+        "chain",
+        "iron_chain",
+        "iron_ingot"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "lodestone",
+      "stringArgs": [
+        "lodestone",
+        "netherite_ingot"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "lightning_rod",
+      "stringArgs": [
+        "lightning_rod",
+        "copper_ingot",
+        "copper_ingot",
+        "copper_ingot"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "tinted_glass",
+      "stringArgs": [
+        "tinted_glass",
+        "amethyst_shard",
+        "amethyst_shard",
+        "glass",
+        "amethyst_shard",
+        "amethyst_shard"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "chiseled_bookshelf",
+      "stringArgs": [
+        "chiseled_bookshelf"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "barrel",
+      "stringArgs": [
+        "barrel"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "cartography_table",
+      "stringArgs": [
+        "cartography_table",
+        "paper",
+        "paper"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "composter",
+      "stringArgs": [
+        "composter"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "fletching_table",
+      "stringArgs": [
+        "fletching_table",
+        "flint",
+        "flint"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "lectern",
+      "stringArgs": [
+        "lectern",
+        "bookshelf"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "daylight_detector",
+      "stringArgs": [
+        "daylight_detector",
+        "glass",
+        "glass",
+        "glass",
+        "quartz",
+        "quartz",
+        "quartz",
+        "wooden_slab",
+        "wooden_slab",
+        "wooden_slab"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "tripwire_hook",
+      "stringArgs": [
+        "tripwire_hook",
+        "iron_ingot",
+        "stick",
+        "planks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "crossbow",
+      "stringArgs": [
+        "crossbow",
+        "iron_ingot",
+        "string",
+        "tripwire_hook",
+        "string"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "tnt",
+      "stringArgs": [
+        "tnt"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "repeater",
+      "stringArgs": [
+        "repeater",
+        "redstone_torch",
+        "redstone",
+        "redstone_torch",
+        "stone",
+        "stone",
+        "stone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "comparator",
+      "stringArgs": [
+        "comparator",
+        "redstone_torch",
+        "redstone_torch",
+        "quartz",
+        "redstone_torch",
+        "stone",
+        "stone",
+        "stone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "rail",
+      "stringArgs": [
+        "rail"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "powered_rail",
+      "stringArgs": [
+        "powered_rail",
+        "redstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "detector_rail",
+      "stringArgs": [
+        "detector_rail",
+        "stone_pressure_plate",
+        "redstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "activator_rail",
+      "stringArgs": [
+        "activator_rail",
+        "redstone_torch"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "hopper",
+      "stringArgs": [
+        "hopper",
+        "chest"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "painting",
+      "stringArgs": [
+        "painting",
+        "wool"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "item_frame",
+      "stringArgs": [
+        "item_frame",
+        "leather"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "bread",
+      "stringArgs": [
+        "bread",
+        "wheat",
+        "wheat",
+        "wheat"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "cookie",
+      "stringArgs": [
+        "cookie",
+        "wheat",
+        "cocoa_beans",
+        "wheat"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "cake",
+      "stringArgs": [
+        "cake",
+        "milk",
+        "milk",
+        "milk",
+        "sugar",
+        "egg",
+        "sugar",
+        "wheat",
+        "wheat",
+        "wheat"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "golden_carrot",
+      "stringArgs": [
+        "golden_carrot",
+        "carrot"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "golden_apple",
+      "stringArgs": [
+        "golden_apple",
+        "apple"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "rabbit_stew",
+      "stringArgs": [
+        "rabbit_stew",
+        "cooked_rabbit",
+        "carrot",
+        "baked_potato",
+        "mushroom",
+        "bowl"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3",
+      "modifiers": [],
+      "name": "beetroot_soup",
+      "stringArgs": [
+        "beetroot_soup",
+        "bowl"
+      ]
+    },
+    {
+      "collectorClass": "CollectBlockByOneTask.CollectCobblestoneTask",
+      "helper": "simple",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "cobblestone",
+      "stringArgs": [
+        "cobblestone"
+      ]
+    },
+    {
+      "collectorClass": "CollectBlockByOneTask.CollectCobbledDeepslateTask",
+      "helper": "simple",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "cobbled_deepslate",
+      "stringArgs": [
+        "cobbled_deepslate"
+      ]
+    },
+    {
+      "collectorClass": "CollectSaplingsTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "sapling",
+      "stringArgs": [
+        "sapling"
+      ]
+    },
+    {
+      "collectorClass": "CollectSandstoneTask",
+      "helper": "simple",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "sandstone",
+      "stringArgs": [
+        "sandstone"
+      ]
+    },
+    {
+      "collectorClass": "CollectRedSandstoneTask",
+      "helper": "simple",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "red_sandstone",
+      "stringArgs": [
+        "red_sandstone"
+      ]
+    },
+    {
+      "collectorClass": "CollectCoarseDirtTask",
+      "helper": "simple",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "coarse_dirt",
+      "stringArgs": [
+        "coarse_dirt"
+      ]
+    },
+    {
+      "collectorClass": "CollectAmethystBlockTask",
+      "helper": "simple",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "amethyst_block",
+      "stringArgs": [
+        "amethyst_block"
+      ]
+    },
+    {
+      "collectorClass": "CollectDripstoneBlockTask",
+      "helper": "simple",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "dripstone_block",
+      "stringArgs": [
+        "dripstone_block"
+      ]
+    },
+    {
+      "collectorClass": "CollectFlintTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "flint",
+      "stringArgs": [
+        "flint"
+      ]
+    },
+    {
+      "collectorClass": "CollectObsidianTask",
+      "helper": "simple",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "obsidian",
+      "stringArgs": [
+        "obsidian"
+      ]
+    },
+    {
+      "collectorClass": "CollectWoolTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "wool",
+      "stringArgs": [
+        "wool"
+      ]
+    },
+    {
+      "collectorClass": "CollectEggsTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "egg",
+      "stringArgs": [
+        "egg"
+      ]
+    },
+    {
+      "collectorClass": "KillEndermanTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "ender_pearl",
+      "stringArgs": [
+        "ender_pearl"
+      ]
+    },
+    {
+      "collectorClass": "CollectBlazeRodsTask",
+      "helper": "simple",
+      "modifiers": [
+        "forceDimension:NETHER"
+      ],
+      "name": "blaze_rod",
+      "stringArgs": [
+        "blaze_rod"
+      ]
+    },
+    {
+      "collectorClass": "CollectCocoaBeansTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "cocoa_beans",
+      "stringArgs": [
+        "cocoa_beans"
+      ]
+    },
+    {
+      "collectorClass": "CollectFlowerTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "flower",
+      "stringArgs": [
+        "flower"
+      ]
+    },
+    {
+      "collectorClass": "CollectWheatTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "wheat",
+      "stringArgs": [
+        "wheat"
+      ]
+    },
+    {
+      "collectorClass": "CollectWheatSeedsTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "wheat_seeds",
+      "stringArgs": [
+        "wheat_seeds"
+      ]
+    },
+    {
+      "collectorClass": "GetSmithingTemplateTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "netherite_upgrade_smithing_template",
+      "stringArgs": [
+        "netherite_upgrade_smithing_template"
+      ]
+    },
+    {
+      "collectorClass": "CollectPlanksTask",
+      "helper": "simple",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "planks",
+      "stringArgs": [
+        "planks"
+      ]
+    },
+    {
+      "collectorClass": "CollectStrippedLogTask",
+      "helper": "simple",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "stripped_logs",
+      "stringArgs": [
+        "stripped_logs"
+      ]
+    },
+    {
+      "collectorClass": "CollectSticksTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "stick",
+      "stringArgs": [
+        "stick"
+      ]
+    },
+    {
+      "collectorClass": "CollectIronIngotTask",
+      "helper": "simple",
+      "modifiers": [
+        "forceDimension:OVERWORLD"
+      ],
+      "name": "iron_ingot",
+      "stringArgs": [
+        "iron_ingot"
+      ]
+    },
+    {
+      "collectorClass": "CollectGoldIngotTask",
+      "helper": "simple",
+      "modifiers": [
+        "anyDimension"
+      ],
+      "name": "gold_ingot",
+      "stringArgs": [
+        "gold_ingot"
+      ]
+    },
+    {
+      "collectorClass": "CollectGoldNuggetsTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "gold_nugget",
+      "stringArgs": [
+        "gold_nugget"
+      ]
+    },
+    {
+      "collectorClass": "CollectHayBlockTask",
+      "helper": "simple",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "hay_block",
+      "stringArgs": [
+        "hay_block"
+      ]
+    },
+    {
+      "collectorClass": "CollectNetherBricksTask",
+      "helper": "simple",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "nether_bricks",
+      "stringArgs": [
+        "nether_bricks"
+      ]
+    },
+    {
+      "collectorClass": "CollectMagmaCreamTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "magma_cream",
+      "stringArgs": [
+        "magma_cream"
+      ]
+    },
+    {
+      "collectorClass": "CollectBucketLiquidTask.CollectWaterBucketTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "water_bucket",
+      "stringArgs": [
+        "water_bucket"
+      ]
+    },
+    {
+      "collectorClass": "CollectBucketLiquidTask.CollectLavaBucketTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "lava_bucket",
+      "stringArgs": [
+        "lava_bucket"
+      ]
+    },
+    {
+      "collectorClass": "CollectBoatTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "boat",
+      "stringArgs": [
+        "boat"
+      ]
+    },
+    {
+      "collectorClass": "CollectHoneycombTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "honeycomb",
+      "stringArgs": [
+        "honeycomb"
+      ]
+    },
+    {
+      "collectorClass": "CollectWoodenPressurePlateTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "wooden_pressure_plate",
+      "stringArgs": [
+        "wooden_pressure_plate"
+      ]
+    },
+    {
+      "collectorClass": "CollectWoodenButtonTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "wooden_button",
+      "stringArgs": [
+        "wooden_button"
+      ]
+    },
+    {
+      "collectorClass": "CollectSignTask",
+      "helper": "simple",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "sign",
+      "stringArgs": [
+        "sign"
+      ]
+    },
+    {
+      "collectorClass": "CollectHangingSignTask",
+      "helper": "simple",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "hanging_sign",
+      "stringArgs": [
+        "hanging_sign"
+      ]
+    },
+    {
+      "collectorClass": "CollectBedTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "bed",
+      "stringArgs": [
+        "bed"
+      ]
+    },
+    {
+      "collectorClass": "CarveThenCollectTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "carved_pumpkin",
+      "stringArgs": [
+        "carved_pumpkin"
+      ]
+    },
+    {
+      "collectorClass": "CollectWoodenStairsTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "wooden_stairs",
+      "stringArgs": [
+        "wooden_stairs"
+      ]
+    },
+    {
+      "collectorClass": "CollectWoodenSlabTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "wooden_slab",
+      "stringArgs": [
+        "wooden_slab"
+      ]
+    },
+    {
+      "collectorClass": "CollectWoodenDoorTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "wooden_door",
+      "stringArgs": [
+        "wooden_door"
+      ]
+    },
+    {
+      "collectorClass": "CollectWoodenTrapDoorTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "wooden_trapdoor",
+      "stringArgs": [
+        "wooden_trapdoor"
+      ]
+    },
+    {
+      "collectorClass": "CollectFenceTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "wooden_fence",
+      "stringArgs": [
+        "wooden_fence"
+      ]
+    },
+    {
+      "collectorClass": "CollectFenceGateTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "wooden_fence_gate",
+      "stringArgs": [
+        "wooden_fence_gate"
+      ]
+    },
+    {
+      "collectorClass": "CollectMilkTask",
+      "helper": "simple",
+      "modifiers": [],
+      "name": "milk",
+      "stringArgs": [
+        "milk"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [
+        "anyDimension"
+      ],
+      "name": "log",
+      "stringArgs": [
+        "log"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "dirt",
+      "stringArgs": [
+        "dirt"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "andesite",
+      "stringArgs": [
+        "andesite"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "granite",
+      "stringArgs": [
+        "granite"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "diorite",
+      "stringArgs": [
+        "diorite"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "calcite",
+      "stringArgs": [
+        "calcite"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "tuff",
+      "stringArgs": [
+        "tuff"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [
+        "forceDimension:NETHER"
+      ],
+      "name": "netherrack",
+      "stringArgs": [
+        "netherrack"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [
+        "forceDimension:NETHER"
+      ],
+      "name": "magma_block",
+      "stringArgs": [
+        "magma_block"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [
+        "forceDimension:NETHER"
+      ],
+      "name": "blackstone",
+      "stringArgs": [
+        "blackstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [
+        "forceDimension:NETHER"
+      ],
+      "name": "basalt",
+      "stringArgs": [
+        "basalt"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [
+        "forceDimension:NETHER"
+      ],
+      "name": "soul_sand",
+      "stringArgs": [
+        "soul_sand"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [
+        "forceDimension:NETHER"
+      ],
+      "name": "soul_soil",
+      "stringArgs": [
+        "soul_soil"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [
+        "forceDimension:NETHER"
+      ],
+      "name": "glowstone_dust",
+      "stringArgs": [
+        "glowstone_dust"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "coal",
+      "stringArgs": [
+        "coal"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "raw_iron",
+      "stringArgs": [
+        "raw_iron"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "raw_gold",
+      "stringArgs": [
+        "raw_gold"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "raw_copper",
+      "stringArgs": [
+        "raw_copper"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "diamond",
+      "stringArgs": [
+        "diamond"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "emerald",
+      "stringArgs": [
+        "emerald"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "redstone",
+      "stringArgs": [
+        "redstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "lapis_lazuli",
+      "stringArgs": [
+        "lapis_lazuli"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "amethyst_shard",
+      "stringArgs": [
+        "amethyst_shard"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "pointed_dripstone",
+      "stringArgs": [
+        "pointed_dripstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "sand",
+      "stringArgs": [
+        "sand"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "red_sand",
+      "stringArgs": [
+        "red_sand"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "gravel",
+      "stringArgs": [
+        "gravel"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "clay_ball",
+      "stringArgs": [
+        "clay_ball"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [
+        "forceDimension:NETHER"
+      ],
+      "name": "ancient_debris",
+      "stringArgs": [
+        "ancient_debris"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [
+        "forceDimension:NETHER"
+      ],
+      "name": "gilded_blackstone",
+      "stringArgs": [
+        "gilded_blackstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "oak_sapling",
+      "stringArgs": [
+        "oak_sapling"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "spruce_sapling",
+      "stringArgs": [
+        "spruce_sapling"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "birch_sapling",
+      "stringArgs": [
+        "birch_sapling"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "jungle_sapling",
+      "stringArgs": [
+        "jungle_sapling"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "acacia_sapling",
+      "stringArgs": [
+        "acacia_sapling"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "dark_oak_sapling",
+      "stringArgs": [
+        "dark_oak_sapling"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "mangrove_propagule",
+      "stringArgs": [
+        "mangrove_propagule"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "cherry_sapling",
+      "stringArgs": [
+        "cherry_sapling"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "sugar_cane",
+      "stringArgs": [
+        "sugar_cane"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "brown_mushroom",
+      "stringArgs": [
+        "brown_mushroom"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "red_mushroom",
+      "stringArgs": [
+        "red_mushroom"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "mushroom",
+      "stringArgs": [
+        "mushroom"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "melon_slice",
+      "stringArgs": [
+        "melon_slice"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "pumpkin",
+      "stringArgs": [
+        "pumpkin"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "bell",
+      "stringArgs": [
+        "bell"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [
+        "forceDimension:NETHER"
+      ],
+      "name": "nether_wart",
+      "stringArgs": [
+        "nether_wart"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [
+        "forceDimension:NETHER"
+      ],
+      "name": "crimson_fungus",
+      "stringArgs": [
+        "crimson_fungus"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [
+        "forceDimension:NETHER"
+      ],
+      "name": "warped_fungus",
+      "stringArgs": [
+        "warped_fungus"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [
+        "forceDimension:NETHER"
+      ],
+      "name": "crimson_roots",
+      "stringArgs": [
+        "crimson_roots"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [
+        "forceDimension:NETHER"
+      ],
+      "name": "warped_roots",
+      "stringArgs": [
+        "warped_roots"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [
+        "forceDimension:NETHER"
+      ],
+      "name": "weeping_vines",
+      "stringArgs": [
+        "weeping_vines"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [
+        "forceDimension:NETHER"
+      ],
+      "name": "twisting_vines",
+      "stringArgs": [
+        "twisting_vines"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [
+        "forceDimension:NETHER"
+      ],
+      "name": "nether_wart_block",
+      "stringArgs": [
+        "nether_wart_block"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [
+        "forceDimension:NETHER"
+      ],
+      "name": "warped_wart_block",
+      "stringArgs": [
+        "warped_wart_block"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [
+        "forceDimension:NETHER"
+      ],
+      "name": "shroomlight",
+      "stringArgs": [
+        "shroomlight"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [
+        "forceDimension:NETHER"
+      ],
+      "name": "quartz",
+      "stringArgs": [
+        "quartz"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "bamboo",
+      "stringArgs": [
+        "bamboo"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "allium",
+      "stringArgs": [
+        "allium"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "azure_bluet",
+      "stringArgs": [
+        "azure_bluet"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "blue_orchid",
+      "stringArgs": [
+        "blue_orchid"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "cactus",
+      "stringArgs": [
+        "cactus"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "cornflower",
+      "stringArgs": [
+        "cornflower"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "dandelion",
+      "stringArgs": [
+        "dandelion"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "lilac",
+      "stringArgs": [
+        "lilac"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "lily_of_the_valley",
+      "stringArgs": [
+        "lily_of_the_valley"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "orange_tulip",
+      "stringArgs": [
+        "orange_tulip"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "oxeye_daisy",
+      "stringArgs": [
+        "oxeye_daisy"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "pink_tulip",
+      "stringArgs": [
+        "pink_tulip"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "poppy",
+      "stringArgs": [
+        "poppy"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "peony",
+      "stringArgs": [
+        "peony"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "red_tulip",
+      "stringArgs": [
+        "red_tulip"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "rose_bush",
+      "stringArgs": [
+        "rose_bush"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "sunflower",
+      "stringArgs": [
+        "sunflower"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "white_tulip",
+      "stringArgs": [
+        "white_tulip"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mine",
+      "modifiers": [],
+      "name": "apple",
+      "stringArgs": [
+        "apple"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3Block",
+      "modifiers": [],
+      "name": "iron_block",
+      "stringArgs": [
+        "iron_block",
+        "iron_ingot"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3Block",
+      "modifiers": [],
+      "name": "gold_block",
+      "stringArgs": [
+        "gold_block",
+        "gold_ingot"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3Block",
+      "modifiers": [],
+      "name": "copper_block",
+      "stringArgs": [
+        "copper_block",
+        "copper_ingot"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3Block",
+      "modifiers": [],
+      "name": "raw_iron_block",
+      "stringArgs": [
+        "raw_iron_block",
+        "raw_iron"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3Block",
+      "modifiers": [],
+      "name": "raw_gold_block",
+      "stringArgs": [
+        "raw_gold_block",
+        "raw_gold"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3Block",
+      "modifiers": [],
+      "name": "raw_copper_block",
+      "stringArgs": [
+        "raw_copper_block",
+        "raw_copper"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3Block",
+      "modifiers": [],
+      "name": "diamond_block",
+      "stringArgs": [
+        "diamond_block",
+        "diamond"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3Block",
+      "modifiers": [],
+      "name": "redstone_block",
+      "stringArgs": [
+        "redstone_block",
+        "redstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3Block",
+      "modifiers": [],
+      "name": "coal_block",
+      "stringArgs": [
+        "coal_block",
+        "coal"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3Block",
+      "modifiers": [],
+      "name": "emerald_block",
+      "stringArgs": [
+        "emerald_block",
+        "emerald"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3Block",
+      "modifiers": [],
+      "name": "lapis_block",
+      "stringArgs": [
+        "lapis_block",
+        "lapis_lazuli"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3Block",
+      "modifiers": [],
+      "name": "slime_block",
+      "stringArgs": [
+        "slime_block",
+        "slime_ball"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3Block",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "melon",
+      "stringArgs": [
+        "melon",
+        "melon_slice"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe3x3Block",
+      "modifiers": [],
+      "name": "bamboo_block",
+      "stringArgs": [
+        "bamboo_block",
+        "bamboo"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smelt",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "stone",
+      "stringArgs": [
+        "stone",
+        "cobblestone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smelt",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "deepslate",
+      "stringArgs": [
+        "deepslate",
+        "cobbled_deepslate"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smelt",
+      "modifiers": [],
+      "name": "smooth_stone",
+      "stringArgs": [
+        "smooth_stone",
+        "stone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smelt",
+      "modifiers": [],
+      "name": "smooth_quartz",
+      "stringArgs": [
+        "smooth_quartz",
+        "quartz_block"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smelt",
+      "modifiers": [],
+      "name": "smooth_basalt",
+      "stringArgs": [
+        "smooth_basalt",
+        "basalt"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smelt",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "glass",
+      "stringArgs": [
+        "glass",
+        "sand"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smelt",
+      "modifiers": [],
+      "name": "copper_ingot",
+      "stringArgs": [
+        "copper_ingot",
+        "raw_copper"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smelt",
+      "modifiers": [],
+      "name": "charcoal",
+      "stringArgs": [
+        "charcoal",
+        "log"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smelt",
+      "modifiers": [],
+      "name": "brick",
+      "stringArgs": [
+        "brick",
+        "clay_ball"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smelt",
+      "modifiers": [],
+      "name": "nether_brick",
+      "stringArgs": [
+        "nether_brick",
+        "netherrack"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smelt",
+      "modifiers": [],
+      "name": "green_dye",
+      "stringArgs": [
+        "green_dye",
+        "cactus"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smelt",
+      "modifiers": [],
+      "name": "netherite_scrap",
+      "stringArgs": [
+        "netherite_scrap",
+        "ancient_debris"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smelt",
+      "modifiers": [],
+      "name": "cracked_stone_bricks",
+      "stringArgs": [
+        "cracked_stone_bricks",
+        "stone_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smelt",
+      "modifiers": [],
+      "name": "cracked_nether_bricks",
+      "stringArgs": [
+        "cracked_nether_bricks",
+        "nether_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smelt",
+      "modifiers": [],
+      "name": "cracked_polished_blackstone_bricks",
+      "stringArgs": [
+        "cracked_polished_blackstone_bricks",
+        "polished_blackstone_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smelt",
+      "modifiers": [],
+      "name": "cracked_deepslate_bricks",
+      "stringArgs": [
+        "cracked_deepslate_bricks",
+        "deepslate_bricks"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smelt",
+      "modifiers": [],
+      "name": "cracked_deepslate_tiles",
+      "stringArgs": [
+        "cracked_deepslate_tiles",
+        "deepslate_tiles"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smelt",
+      "modifiers": [],
+      "name": "smooth_sandstone",
+      "stringArgs": [
+        "smooth_sandstone",
+        "sandstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smelt",
+      "modifiers": [],
+      "name": "smooth_red_sandstone",
+      "stringArgs": [
+        "smooth_red_sandstone",
+        "red_sandstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "smelt",
+      "modifiers": [],
+      "name": "baked_potato",
+      "stringArgs": [
+        "baked_potato",
+        "potato"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "sugar",
+      "stringArgs": [
+        "sugar",
+        "sugar_cane"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "bone_meal",
+      "stringArgs": [
+        "bone_meal",
+        "bone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "melon_seeds",
+      "stringArgs": [
+        "melon_seeds",
+        "melon_slice"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "bamboo_planks",
+      "stringArgs": [
+        "bamboo_planks",
+        "bamboo_block"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "quartz_pillar",
+      "stringArgs": [
+        "quartz_pillar",
+        "quartz_block",
+        "quartz_block"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "mossy_stone_bricks",
+      "stringArgs": [
+        "mossy_stone_bricks",
+        "stone_bricks",
+        "vine"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "mossy_cobblestone",
+      "stringArgs": [
+        "mossy_cobblestone",
+        "cobblestone",
+        "vine"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "book",
+      "stringArgs": [
+        "book",
+        "paper",
+        "paper",
+        "paper",
+        "leather"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "writable_book",
+      "stringArgs": [
+        "writable_book",
+        "book",
+        "ink_sac",
+        "feather"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "blaze_powder",
+      "stringArgs": [
+        "blaze_powder",
+        "blaze_rod"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "ender_eye",
+      "stringArgs": [
+        "ender_eye",
+        "blaze_powder",
+        "ender_pearl"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "fermented_spider_eye",
+      "stringArgs": [
+        "fermented_spider_eye",
+        "brown_mushroom",
+        "sugar",
+        "spider_eye"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "flower_banner_pattern",
+      "stringArgs": [
+        "flower_banner_pattern",
+        "paper",
+        "oxeye_daisy"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "chiseled_sandstone",
+      "stringArgs": [
+        "chiseled_sandstone",
+        "sandstone_slab",
+        "sandstone_slab"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "chiseled_red_sandstone",
+      "stringArgs": [
+        "chiseled_red_sandstone",
+        "red_sandstone_slab",
+        "red_sandstone_slab"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "chiseled_stone_bricks",
+      "stringArgs": [
+        "chiseled_stone_bricks",
+        "stone_brick_slab",
+        "stone_brick_slab"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "chiseled_nether_bricks",
+      "stringArgs": [
+        "chiseled_nether_bricks",
+        "nether_brick_slab",
+        "nether_brick_slab"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "chiseled_quartz_block",
+      "stringArgs": [
+        "chiseled_quartz_block",
+        "quartz_slab",
+        "quartz_slab"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "chiseled_deepslate",
+      "stringArgs": [
+        "chiseled_deepslate",
+        "cobbled_deepslate_slab",
+        "cobbled_deepslate_slab"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "flint_and_steel",
+      "stringArgs": [
+        "flint_and_steel",
+        "flint"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "shears",
+      "stringArgs": [
+        "shears"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "iron_nugget",
+      "stringArgs": [
+        "iron_nugget"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "carrot_on_a_stick",
+      "stringArgs": [
+        "carrot_on_a_stick",
+        "fishing_rod",
+        "carrot"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "warped_fungus_on_a_stick",
+      "stringArgs": [
+        "warped_fungus_on_a_stick",
+        "fishing_rod",
+        "warped_fungus"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "candle",
+      "stringArgs": [
+        "candle",
+        "string"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [
+        "dontMineIfPresent"
+      ],
+      "name": "crafting_table",
+      "stringArgs": [
+        "crafting_table"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "stone_pressure_plate",
+      "stringArgs": [
+        "stone_pressure_plate",
+        "stone",
+        "stone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "stone_button",
+      "stringArgs": [
+        "stone_button",
+        "stone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "polished_blackstone_pressure_plate",
+      "stringArgs": [
+        "polished_blackstone_pressure_plate",
+        "polished_blackstone",
+        "polished_blackstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "polished_blackstone_button",
+      "stringArgs": [
+        "polished_blackstone_button",
+        "polished_blackstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "lever",
+      "stringArgs": [
+        "lever"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [
+        "craftOnly"
+      ],
+      "name": "torch",
+      "stringArgs": [
+        "torch",
+        "coal"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "loom",
+      "stringArgs": [
+        "loom",
+        "string",
+        "string"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "jack_o_lantern",
+      "stringArgs": [
+        "jack_o_lantern",
+        "carved_pumpkin",
+        "torch"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "heavy_weighted_pressure_plate",
+      "stringArgs": [
+        "heavy_weighted_pressure_plate",
+        "iron_ingot",
+        "iron_ingot"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "light_weighted_pressure_plate",
+      "stringArgs": [
+        "light_weighted_pressure_plate",
+        "gold_ingot",
+        "gold_ingot"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "trapped_chest",
+      "stringArgs": [
+        "trapped_chest",
+        "chest",
+        "tripwire_hook"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "sticky_piston",
+      "stringArgs": [
+        "sticky_piston",
+        "slime_ball",
+        "piston"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "redstone_torch",
+      "stringArgs": [
+        "redstone_torch",
+        "redstone"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "glow_item_frame",
+      "stringArgs": [
+        "glow_item_frame",
+        "item_frame",
+        "glow_ink_sac"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "chest_minecart",
+      "stringArgs": [
+        "chest_minecart",
+        "chest",
+        "minecart"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "furnace_minecart",
+      "stringArgs": [
+        "furnace_minecart",
+        "furnace",
+        "minecart"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "hopper_minecart",
+      "stringArgs": [
+        "hopper_minecart",
+        "hopper",
+        "minecart"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "tnt_minecart",
+      "stringArgs": [
+        "tnt_minecart",
+        "tnt",
+        "minecart"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "mushroom_stew",
+      "stringArgs": [
+        "mushroom_stew",
+        "red_mushroom",
+        "brown_mushroom",
+        "bowl"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "suspicious_stew",
+      "stringArgs": [
+        "suspicious_stew",
+        "red_mushroom",
+        "brown_mushroom",
+        "bowl",
+        "flower"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "shapedRecipe2x2",
+      "modifiers": [],
+      "name": "pumpkin_pie",
+      "stringArgs": [
+        "pumpkin_pie",
+        "pumpkin",
+        "sugar",
+        "egg"
+      ]
+    }
+  ],
+  "mobcookEntries": [
+    {
+      "collectorClass": null,
+      "helper": "mobCook",
+      "modifiers": [],
+      "name": "porkchop",
+      "stringArgs": [
+        "porkchop"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mobCookCooked",
+      "modifiers": [],
+      "name": "cooked_porkchop",
+      "stringArgs": [
+        "porkchop"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mobCook",
+      "modifiers": [],
+      "name": "beef",
+      "stringArgs": [
+        "beef"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mobCookCooked",
+      "modifiers": [],
+      "name": "cooked_beef",
+      "stringArgs": [
+        "beef"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mobCook",
+      "modifiers": [],
+      "name": "chicken",
+      "stringArgs": [
+        "chicken"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mobCookCooked",
+      "modifiers": [],
+      "name": "cooked_chicken",
+      "stringArgs": [
+        "chicken"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mobCook",
+      "modifiers": [],
+      "name": "mutton",
+      "stringArgs": [
+        "mutton"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mobCookCooked",
+      "modifiers": [],
+      "name": "cooked_mutton",
+      "stringArgs": [
+        "mutton"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mobCook",
+      "modifiers": [],
+      "name": "rabbit",
+      "stringArgs": [
+        "rabbit"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mobCookCooked",
+      "modifiers": [],
+      "name": "cooked_rabbit",
+      "stringArgs": [
+        "rabbit"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mobCook",
+      "modifiers": [],
+      "name": "salmon",
+      "stringArgs": [
+        "salmon"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mobCookCooked",
+      "modifiers": [],
+      "name": "cooked_salmon",
+      "stringArgs": [
+        "salmon"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mobCook",
+      "modifiers": [],
+      "name": "cod",
+      "stringArgs": [
+        "cod"
+      ]
+    },
+    {
+      "collectorClass": null,
+      "helper": "mobCookCooked",
+      "modifiers": [],
+      "name": "cooked_cod",
+      "stringArgs": [
+        "cod"
+      ]
+    }
+  ],
+  "smithEntries": [
+    {
+      "helper": "smith",
+      "name": "netherite_helmet",
+      "stringArgs": [
+        "netherite_helmet",
+        "netherite_ingot",
+        "diamond_helmet"
+      ]
+    },
+    {
+      "helper": "smith",
+      "name": "netherite_chestplate",
+      "stringArgs": [
+        "netherite_chestplate",
+        "netherite_ingot",
+        "diamond_chestplate"
+      ]
+    },
+    {
+      "helper": "smith",
+      "name": "netherite_leggings",
+      "stringArgs": [
+        "netherite_leggings",
+        "netherite_ingot",
+        "diamond_leggings"
+      ]
+    },
+    {
+      "helper": "smith",
+      "name": "netherite_boots",
+      "stringArgs": [
+        "netherite_boots",
+        "netherite_ingot",
+        "diamond_boots"
+      ]
+    },
+    {
+      "helper": "smith",
+      "name": "netherite_pickaxe",
+      "stringArgs": [
+        "netherite_pickaxe",
+        "netherite_ingot",
+        "diamond_pickaxe"
+      ]
+    },
+    {
+      "helper": "smith",
+      "name": "netherite_axe",
+      "stringArgs": [
+        "netherite_axe",
+        "netherite_ingot",
+        "diamond_axe"
+      ]
+    },
+    {
+      "helper": "smith",
+      "name": "netherite_shovel",
+      "stringArgs": [
+        "netherite_shovel",
+        "netherite_ingot",
+        "diamond_shovel"
+      ]
+    },
+    {
+      "helper": "smith",
+      "name": "netherite_sword",
+      "stringArgs": [
+        "netherite_sword",
+        "netherite_ingot",
+        "diamond_sword"
+      ]
+    },
+    {
+      "helper": "smith",
+      "name": "netherite_hoe",
+      "stringArgs": [
+        "netherite_hoe",
+        "netherite_ingot",
+        "diamond_hoe"
+      ]
+    }
+  ],
+  "specialCollectorTable": {
+    "amethyst_block": "CollectAmethystBlockTask",
+    "bed": "CollectBedTask",
+    "blaze_rod": "CollectBlazeRodsTask",
+    "boat": "CollectBoatTask",
+    "carved_pumpkin": "CarveThenCollectTask",
+    "coarse_dirt": "CollectCoarseDirtTask",
+    "cobbled_deepslate": "CollectBlockByOneTask.CollectCobbledDeepslateTask",
+    "cobblestone": "CollectBlockByOneTask.CollectCobblestoneTask",
+    "cocoa_beans": "CollectCocoaBeansTask",
+    "dripstone_block": "CollectDripstoneBlockTask",
+    "egg": "CollectEggsTask",
+    "ender_pearl": "KillEndermanTask",
+    "flint": "CollectFlintTask",
+    "flower": "CollectFlowerTask",
+    "gold_ingot": "CollectGoldIngotTask",
+    "gold_nugget": "CollectGoldNuggetsTask",
+    "hanging_sign": "CollectHangingSignTask",
+    "hay_block": "CollectHayBlockTask",
+    "honeycomb": "CollectHoneycombTask",
+    "iron_ingot": "CollectIronIngotTask",
+    "lava_bucket": "CollectBucketLiquidTask.CollectLavaBucketTask",
+    "magma_cream": "CollectMagmaCreamTask",
+    "milk": "CollectMilkTask",
+    "nether_bricks": "CollectNetherBricksTask",
+    "netherite_upgrade_smithing_template": "GetSmithingTemplateTask",
+    "obsidian": "CollectObsidianTask",
+    "planks": "CollectPlanksTask",
+    "red_sandstone": "CollectRedSandstoneTask",
+    "sandstone": "CollectSandstoneTask",
+    "sapling": "CollectSaplingsTask",
+    "sign": "CollectSignTask",
+    "stick": "CollectSticksTask",
+    "stripped_logs": "CollectStrippedLogTask",
+    "water_bucket": "CollectBucketLiquidTask.CollectWaterBucketTask",
+    "wheat": "CollectWheatTask",
+    "wheat_seeds": "CollectWheatSeedsTask",
+    "wooden_button": "CollectWoodenButtonTask",
+    "wooden_door": "CollectWoodenDoorTask",
+    "wooden_fence": "CollectFenceTask",
+    "wooden_fence_gate": "CollectFenceGateTask",
+    "wooden_pressure_plate": "CollectWoodenPressurePlateTask",
+    "wooden_slab": "CollectWoodenSlabTask",
+    "wooden_stairs": "CollectWoodenStairsTask",
+    "wooden_trapdoor": "CollectWoodenTrapDoorTask",
+    "wool": "CollectWoolTask"
+  },
+  "structurallyCoveredJsonIds": [
+    "stripped_acacia_log",
+    "stripped_bamboo_log",
+    "stripped_birch_log",
+    "stripped_cherry_log",
+    "stripped_crimson_log",
+    "stripped_dark_oak_log",
+    "stripped_jungle_log",
+    "stripped_mangrove_log",
+    "stripped_oak_log",
+    "stripped_spruce_log",
+    "stripped_warped_log"
+  ],
+  "toolsEntries": [
+    {
+      "name": "wooden_pickaxe",
+      "parent": "wooden",
+      "source": "tools"
+    },
+    {
+      "name": "wooden_shovel",
+      "parent": "wooden",
+      "source": "tools"
+    },
+    {
+      "name": "wooden_sword",
+      "parent": "wooden",
+      "source": "tools"
+    },
+    {
+      "name": "wooden_axe",
+      "parent": "wooden",
+      "source": "tools"
+    },
+    {
+      "name": "wooden_hoe",
+      "parent": "wooden",
+      "source": "tools"
+    },
+    {
+      "name": "stone_pickaxe",
+      "parent": "stone",
+      "source": "tools"
+    },
+    {
+      "name": "stone_shovel",
+      "parent": "stone",
+      "source": "tools"
+    },
+    {
+      "name": "stone_sword",
+      "parent": "stone",
+      "source": "tools"
+    },
+    {
+      "name": "stone_axe",
+      "parent": "stone",
+      "source": "tools"
+    },
+    {
+      "name": "stone_hoe",
+      "parent": "stone",
+      "source": "tools"
+    },
+    {
+      "name": "iron_pickaxe",
+      "parent": "iron",
+      "source": "tools"
+    },
+    {
+      "name": "iron_shovel",
+      "parent": "iron",
+      "source": "tools"
+    },
+    {
+      "name": "iron_sword",
+      "parent": "iron",
+      "source": "tools"
+    },
+    {
+      "name": "iron_axe",
+      "parent": "iron",
+      "source": "tools"
+    },
+    {
+      "name": "iron_hoe",
+      "parent": "iron",
+      "source": "tools"
+    },
+    {
+      "name": "golden_pickaxe",
+      "parent": "golden",
+      "source": "tools"
+    },
+    {
+      "name": "golden_shovel",
+      "parent": "golden",
+      "source": "tools"
+    },
+    {
+      "name": "golden_sword",
+      "parent": "golden",
+      "source": "tools"
+    },
+    {
+      "name": "golden_axe",
+      "parent": "golden",
+      "source": "tools"
+    },
+    {
+      "name": "golden_hoe",
+      "parent": "golden",
+      "source": "tools"
+    },
+    {
+      "name": "diamond_pickaxe",
+      "parent": "diamond",
+      "source": "tools"
+    },
+    {
+      "name": "diamond_shovel",
+      "parent": "diamond",
+      "source": "tools"
+    },
+    {
+      "name": "diamond_sword",
+      "parent": "diamond",
+      "source": "tools"
+    },
+    {
+      "name": "diamond_axe",
+      "parent": "diamond",
+      "source": "tools"
+    },
+    {
+      "name": "diamond_hoe",
+      "parent": "diamond",
+      "source": "tools"
+    }
+  ],
+  "woodTasksSuffixes": [
+    "boat",
+    "button",
+    "door",
+    "fence",
+    "fence_gate",
+    "hanging_sign",
+    "leaves",
+    "log",
+    "planks",
+    "pressure_plate",
+    "sign",
+    "slab",
+    "stairs",
+    "stripped_logs",
+    "trapdoor"
+  ]
+}

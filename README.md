@@ -8,7 +8,7 @@ This is a server-side tool. Do not treat it as a general client mod. For Minecra
 
 This repository also keeps two convenience artifacts:
 
-- `emma_extracted_recipes_26.1.json` at the repository root as a real example output from Minecraft 26.1.
+- `emma_extracted_recipes.json` at the repository root as a current extractorVersion 3 example output from Minecraft 26.1.2.
 - `java/dist/emma-recipe-extractor-mc26.1.2-fabric-loader0.19.2-0.1.0.jar` as a prebuilt JAR for Minecraft 26.1.2 deployment.
 
 ## Why This Exists
@@ -37,7 +37,7 @@ If you want to use this against a modded server, treat that as a server-side dat
 ├── JSON_FORMAT.md
 ├── CLAUDE.md
 ├── LICENSE
-├── emma_extracted_recipes_26.1.json
+├── emma_extracted_recipes.json
 ├── .gitignore
 ├── examples/
 └── java/
@@ -55,7 +55,11 @@ If you want to use this against a modded server, treat that as a server-side dat
 
 ## Build
 
-Java 25 on `PATH` or via `JAVA_HOME` is required.
+The project target JDK is declared in `java/emma-recipe-extractor/gradle.properties` as `java_version=25`.
+
+If you build through `java/build_and_deploy.sh`, the script will look for a matching local JDK and export `JAVA_HOME` before it runs Gradle. That means a stale shell-level `JAVA_HOME` does not have to break the build as long as Java 25 is installed locally.
+
+If you invoke Gradle directly, use a Java 25 runtime or set `JAVA_HOME` to a Java 25 JDK yourself.
 
 On Windows PowerShell:
 
@@ -83,9 +87,9 @@ This repository is licensed under `0BSD` in [LICENSE](LICENSE). That is a very p
 
 ## Example Output
 
-The checked-in file `emma_extracted_recipes_26.1.json` is an example output produced by running `/emma_extract` against Minecraft 26.1. It is useful for downstream consumers that want a known-good sample without spinning up a server immediately, especially if they are building tools that need the full recipe corpus instead of per-player unlocked client recipe data.
+The checked-in file `emma_extracted_recipes.json` is an example output produced by running `/emma_extract` against Minecraft 26.1.2. It is useful for downstream consumers that want a known-good sample without spinning up a server immediately, especially if they are building tools that need the full recipe corpus instead of per-player unlocked client recipe data.
 
-The code and prebuilt JAR now target Minecraft 26.1.2. The sample JSON remains on 26.1 because no recipe changes were expected between those patch versions and it is still a useful example dataset.
+An older compact-shaped sample from the earlier extractor format is kept only as an archive under `old recipe/`.
 
 ## Format Reference
 
@@ -99,10 +103,62 @@ Examples:
 
 ```bash
 python examples/query_item.py acacia_boat
-python examples/query_item.py minecraft:netherite_sword --file emma_extracted_recipes_26.1.json
+python examples/query_item.py minecraft:netherite_sword --file emma_extracted_recipes.json
 ```
 
 This is intentionally simple, but it is a good starting point for wiki generators, pack tooling, Discord bots, or GOAP / AltoClef-style planning systems.
+
+## TaskCatalogue Generator
+
+This repository now also includes [tools/generate_task_catalogue.py](tools/generate_task_catalogue.py), a Python script that reads extractor JSON and writes a curated, one-way `TaskCatalogue.java`-style file from a read-only Emmaclef template.
+
+The generator is intentionally conservative:
+
+- It picks one canonical acquisition path per item instead of recursively following every recipe edge.
+- It prefers root acquisition chains such as mining and smelting raw ores over reversible decompositions like `iron_block -> iron_ingot`.
+- It mirrors the current Emmaclef wood catalogue structure with aggregate categories such as `log`, `planks`, `stick`, `wooden_door`, and `wooden_slab`, plus per-species wood entries and aliases. Multi-family wood ingredient sets are rendered back to those aggregate keys instead of being collapsed onto one species.
+- It skips unsupported entry families such as brewing and stonecutting in the first pass and records those gaps in a report.
+- It does not edit the Emmaclef repository; it only reads your existing `TaskCatalogue.java` as a template and writes the generated result to a separate output path.
+
+Example:
+
+```powershell
+c:/Users/Owner/Emma-RecipeExtractor/.venv/Scripts/python.exe tools/generate_task_catalogue.py `
+    --file emma_extracted_recipes.json `
+    --template C:/Users/Owner/Emmaclef/java/emmaclef/src/main/java/emma/emmaclef/TaskCatalogue.java `
+    --output C:/temp/TaskCatalogue.generated.java `
+    --report C:/temp/task_catalogue_report.json
+```
+
+Important:
+
+- The generator requires extractor JSON with `extractorVersion >= 3`.
+- The checked-in [emma_extracted_recipes.json](emma_extracted_recipes.json) sample is a real `extractorVersion = 3` export and is suitable for full catalogue generation.
+- A small `extractorVersion = 3` fixture is included at [examples/task_catalogue_fixture_v3.json](examples/task_catalogue_fixture_v3.json) so the generator can be smoke-tested locally without re-running Minecraft. It is intentionally tiny and is not a parity fixture for the current Emmaclef catalogue.
+
+To measure parity against the current Emmaclef catalogue, use [tools/compare_task_catalogues.py](tools/compare_task_catalogues.py) against the real `TaskCatalogue.java` and a generated candidate:
+
+```powershell
+c:/Users/Owner/Emma-RecipeExtractor/.venv/Scripts/python.exe tools/compare_task_catalogues.py `
+    --baseline C:/Users/Owner/Emmaclef/java/emmaclef/src/main/java/emma/emmaclef/TaskCatalogue.java `
+    --candidate C:/temp/TaskCatalogue.generated.java `
+    --report C:/temp/task_catalogue_compare.json
+```
+
+That script reports line counts, normalized helper invocation counts, and missing or extra derived registration keys so coverage gaps are measured explicitly instead of inferred from a small smoke fixture.
+
+If you want generation plus comparison in one command, use [tools/run_full_task_catalogue_generation.py](tools/run_full_task_catalogue_generation.py). It locates the real current Emmaclef `TaskCatalogue.java`, runs generation, then runs the parity comparator:
+
+```powershell
+c:/Users/Owner/Emma-RecipeExtractor/.venv/Scripts/python.exe tools/run_full_task_catalogue_generation.py `
+    --file emma_extracted_recipes.json
+```
+
+In this environment, the real current file is:
+
+```text
+C:/Users/Owner/Emmaclef/java/emmaclef/src/main/java/emma/emmaclef/TaskCatalogue.java
+```
 
 ## Standalone Helper Script
 
@@ -114,10 +170,7 @@ Examples:
 cd java
 ./build_and_deploy.sh
 ./build_and_deploy.sh --mods-dir /path/to/server/mods
-EMMA_RECIPE_EXTRACTOR_SERVER_HOST=host \
-EMMA_RECIPE_EXTRACTOR_SERVER_USER=user \
-EMMA_RECIPE_EXTRACTOR_SERVER_MODS_DIR=/path/to/mods \
-./build_and_deploy.sh --server
+./build_and_deploy.sh --mods-dir /path/to/mods-a --mods-dir /path/to/mods-b
 ```
 
 ## Runtime Use

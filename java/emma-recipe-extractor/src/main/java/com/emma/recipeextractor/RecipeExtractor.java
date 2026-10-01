@@ -177,7 +177,7 @@ public class RecipeExtractor {
         JsonObject meta = new JsonObject();
         meta.addProperty("mcVersion", SharedConstants.getCurrentVersion().id());
         meta.addProperty("timestamp", Instant.now().toString());
-        meta.addProperty("extractorVersion", 2);
+        meta.addProperty("extractorVersion", 3);
         JsonObject countsObj = new JsonObject();
         for (var e : counts.entrySet()) countsObj.addProperty(e.getKey(), e.getValue());
         meta.add("counts", countsObj);
@@ -303,15 +303,33 @@ public class RecipeExtractor {
 
     private static JsonObject extractCraftingEntry(RecipeHolder<?> holder, String itemId,
                                                     CraftingRecipe recipe, int yield) {
-        List<Ingredient> ingredients = recipe.placementInfo().ingredients();
-        if (ingredients.isEmpty()) return null;
+        List<Optional<Ingredient>> ingredients;
+        String method;
+        if (recipe instanceof ShapedRecipe shaped) {
+            ingredients = shaped.getIngredients();
+            if (ingredients.isEmpty()) return null;
+            int w = shaped.getWidth();
+            int h = shaped.getHeight();
+            method = (w <= 2 && h <= 2) ? "CRAFT_SHAPED_2x2" : "CRAFT_SHAPED_3x3";
+        } else {
+            List<Ingredient> shapelessIngredients = recipe.placementInfo().ingredients();
+            if (shapelessIngredients.isEmpty()) return null;
+            ingredients = new ArrayList<>(shapelessIngredients.size());
+            for (Ingredient ingredient : shapelessIngredients) {
+                ingredients.add(Optional.of(ingredient));
+            }
+            method = "CRAFT_SHAPELESS";
+        }
 
-        // Build grid with tag expansion
+        // For shaped recipes we now preserve the full trimmed bounding box,
+        // including null placeholders for empty slots, so downstream generators
+        // can reconstruct the exact pattern without heuristics.
         JsonArray grid = new JsonArray();
-        for (Ingredient ing : ingredients) {
-            if (ing.isEmpty()) {
+        for (Optional<Ingredient> ingredient : ingredients) {
+            if (ingredient.isEmpty()) {
                 grid.add((String) null);
             } else {
+                Ingredient ing = ingredient.get();
                 JsonArray slotAlts = serializeIngredient(ing);
                 if (slotAlts.isEmpty()) {
                     grid.add((String) null);
@@ -319,17 +337,6 @@ public class RecipeExtractor {
                     grid.add(slotAlts);
                 }
             }
-        }
-
-        // Determine method using instanceof (not heuristic)
-        String method;
-        if (recipe instanceof ShapedRecipe shaped) {
-            int w = shaped.getWidth();
-            int h = shaped.getHeight();
-            method = (w <= 2 && h <= 2) ? "CRAFT_SHAPED_2x2" : "CRAFT_SHAPED_3x3";
-        } else {
-            // ShapelessRecipe or any other CraftingRecipe subclass
-            method = "CRAFT_SHAPELESS";
         }
 
         JsonObject entry = new JsonObject();

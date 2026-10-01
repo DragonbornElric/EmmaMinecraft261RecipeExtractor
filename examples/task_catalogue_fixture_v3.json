@@ -1,0 +1,258 @@
+{
+  "extractionMeta": {
+    "mcVersion": "26.1.2",
+    "timestamp": "2026-04-20T12:00:00Z",
+    "extractorVersion": 3,
+    "counts": {
+      "crafting": 8,
+      "smelting": 1,
+      "smithingTransform": 0,
+      "smithingTrim": 0,
+      "stonecutting": 0,
+      "blockDrops": 3,
+      "mobDrops": 0,
+      "brewing": 0,
+      "enchantments": 0,
+      "bannerPatterns": 0,
+      "itemProperties": 0,
+      "total": 12
+    }
+  },
+  "entries": [
+    {
+      "itemId": "oak_log",
+      "obtainMethod": "MINE",
+      "mineBlocks": [
+        {
+          "block": "oak_log",
+          "toolType": "axe",
+          "requirement": "hand"
+        }
+      ],
+      "miningRequirement": "HAND",
+      "itemMatches": [
+        "minecraft:oak_log"
+      ]
+    },
+    {
+      "itemId": "acacia_log",
+      "obtainMethod": "MINE",
+      "mineBlocks": [
+        {
+          "block": "acacia_log",
+          "toolType": "axe",
+          "requirement": "hand"
+        }
+      ],
+      "miningRequirement": "HAND",
+      "itemMatches": [
+        "minecraft:acacia_log"
+      ]
+    },
+    {
+      "itemId": "raw_iron",
+      "obtainMethod": "MINE",
+      "mineBlocks": [
+        {
+          "block": "iron_ore",
+          "toolType": "pickaxe",
+          "requirement": "stone"
+        },
+        {
+          "block": "deepslate_iron_ore",
+          "toolType": "pickaxe",
+          "requirement": "stone"
+        }
+      ],
+      "miningRequirement": "STONE",
+      "itemMatches": [
+        "minecraft:raw_iron"
+      ]
+    },
+    {
+      "itemId": "oak_planks",
+      "recipeId": "minecraft:oak_planks",
+      "obtainMethod": "CRAFT_SHAPELESS",
+      "craftGrid": [
+        [
+          "oak_log",
+          "oak_wood",
+          "stripped_oak_log",
+          "stripped_oak_wood"
+        ]
+      ],
+      "craftYield": 4,
+      "group": "planks",
+      "craftingCategory": "BUILDING",
+      "itemMatches": [
+        "minecraft:oak_planks"
+      ]
+    },
+    {
+      "itemId": "acacia_planks",
+      "recipeId": "minecraft:acacia_planks",
+      "obtainMethod": "CRAFT_SHAPELESS",
+      "craftGrid": [
+        [
+          "acacia_log",
+          "acacia_wood",
+          "stripped_acacia_log",
+          "stripped_acacia_wood"
+        ]
+      ],
+      "craftYield": 4,
+      "group": "planks",
+      "craftingCategory": "BUILDING",
+      "itemMatches": [
+        "minecraft:acacia_planks"
+      ]
+    },
+    {
+      "itemId": "stick",
+      "recipeId": "minecraft:stick",
+      "obtainMethod": "CRAFT_SHAPED_2x2",
+      "craftGrid": [
+        [
+          "oak_planks",
+          "spruce_planks",
+          "acacia_planks"
+        ],
+        [
+          "oak_planks",
+          "spruce_planks",
+          "acacia_planks"
+        ]
+      ],
+      "craftYield": 4,
+      "group": "sticks",
+      "craftingCategory": "MISC",
+      "shapedWidth": 1,
+      "shapedHeight": 2,
+      "itemMatches": [
+        "minecraft:stick"
+      ]
+    },
+    {
+      "itemId": "crafting_table",
+      "recipeId": "minecraft:crafting_table",
+      "obtainMethod": "CRAFT_SHAPED_2x2",
+      "craftGrid": [
+        ["oak_planks", "spruce_planks", "acacia_planks"],
+        ["oak_planks", "spruce_planks", "acacia_planks"],
+        ["oak_planks", "spruce_planks", "acacia_planks"],
+        ["oak_planks", "spruce_planks", "acacia_planks"]
+      ],
+      "craftYield": 1,
+      "group": "building",
+      "craftingCategory": "BUILDING",
+      "shapedWidth": 2,
+      "shapedHeight": 2,
+      "itemMatches": [
+        "minecraft:crafting_table"
+      ]
+    },
+    {
+      "itemId": "acacia_door",
+      "recipeId": "minecraft:acacia_door",
+      "obtainMethod": "CRAFT_SHAPED_3x3",
+      "craftGrid": [
+        ["acacia_planks"],
+        ["acacia_planks"],
+        null,
+        ["acacia_planks"],
+        ["acacia_planks"],
+        null,
+        ["acacia_planks"],
+        ["acacia_planks"],
+        null
+      ],
+      "craftYield": 3,
+      "group": "wooden_door",
+      "craftingCategory": "REDSTONE",
+      "shapedWidth": 3,
+      "shapedHeight": 3,
+      "itemMatches": [
+        "minecraft:acacia_door"
+      ]
+    },
+    {
+      "itemId": "iron_block",
+      "recipeId": "minecraft:iron_block",
+      "obtainMethod": "CRAFT_SHAPED_3x3",
+      "craftGrid": [
+        ["iron_ingot"],
+        ["iron_ingot"],
+        ["iron_ingot"],
+        ["iron_ingot"],
+        ["iron_ingot"],
+        ["iron_ingot"],
+        ["iron_ingot"],
+        ["iron_ingot"],
+        ["iron_ingot"]
+      ],
+      "craftYield": 1,
+      "craftingCategory": "BUILDING",
+      "shapedWidth": 3,
+      "shapedHeight": 3,
+      "itemMatches": [
+        "minecraft:iron_block"
+      ]
+    },
+    {
+      "itemId": "iron_ingot",
+      "recipeId": "minecraft:iron_ingot_from_smelting_raw_iron",
+      "obtainMethod": "SMELT_FURNACE",
+      "smeltFrom": [
+        "raw_iron",
+        "iron_ore",
+        "deepslate_iron_ore"
+      ],
+      "group": "iron_ingot",
+      "cookingCategory": "MISC",
+      "experience": 0.7,
+      "cookingTime": 200,
+      "itemMatches": [
+        "minecraft:iron_ingot"
+      ]
+    },
+    {
+      "itemId": "iron_ingot",
+      "recipeId": "minecraft:iron_ingot_from_iron_block",
+      "obtainMethod": "CRAFT_SHAPELESS",
+      "craftGrid": [
+        [
+          "iron_block"
+        ]
+      ],
+      "craftYield": 9,
+      "group": "iron_ingot",
+      "craftingCategory": "MISC",
+      "itemMatches": [
+        "minecraft:iron_ingot"
+      ]
+    },
+    {
+      "itemId": "iron_pickaxe",
+      "recipeId": "minecraft:iron_pickaxe",
+      "obtainMethod": "CRAFT_SHAPED_3x3",
+      "craftGrid": [
+        ["iron_ingot"],
+        ["iron_ingot"],
+        ["iron_ingot"],
+        null,
+        ["stick"],
+        null,
+        null,
+        ["stick"],
+        null
+      ],
+      "craftYield": 1,
+      "craftingCategory": "EQUIPMENT",
+      "shapedWidth": 3,
+      "shapedHeight": 3,
+      "itemMatches": [
+        "minecraft:iron_pickaxe"
+      ]
+    }
+  ]
+}
